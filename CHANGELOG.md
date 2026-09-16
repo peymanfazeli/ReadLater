@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Milestone 3 — Jalali unlock-date picker
+- Added a custom RTL Jalali month-grid picker
+  (`JalaliDatePicker.tsx`): 42-cell Saturday-start grid, prev/next
+  navigation, non-future days disabled, reported as `onChange(jy, jm, jd)`.
+- Added the Pure Jalali domain layer (`domain/jalali.ts`) on `jalaali-js`
+  2.0.1 (pinned): conversion wrappers, month grids, strict-future checks,
+  quick unlocks (tomorrow / week / 1 Jalali month / 1 Jalali year, clamped),
+  and Persian date formatting with weekday and hour.
+- `CreateMessageScreen` now saves an ISO `unlockAt` from the picked Jalali
+  date + hour chip (۹ صبح / ۱۲ ظهر / ۱۷ عصر / ۲۱ شب); save stays disabled
+  until body and date are valid.
+- Fixed `jalaliMonthGrid` base-day bug (used day 1 instead of the month's
+  real first Gregorian day) and corrected three test expectations that were
+  one year / one day off; boundary tests green.
+- Dependency record: `jalaali-js` chosen over `react-native-calendars`
+  (no Jalali engine), web-DOM Persian pickers (unusable in RN), and
+  `@react-native-community/datetimepicker` (expo-first, Kotlin risk);
+  zero-dependency, no native code.
+- Checks: `tsc` clean, `eslint` 0 problems, 42/42 jest tests,
+  `gradlew assembleDebug` BUILD SUCCESSFUL.
+
 ### M2 fix — device save hang
 - Root cause: Hermes 0.18 on RN 0.77.3 does not expose `globalThis.crypto`
   (verified on device), so `createId()` threw on every save; `handleSave` had
