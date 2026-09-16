@@ -3,13 +3,15 @@ import {
   jalaliMonthGrid,
   jalaliToIso,
   isJalaliDayAvailable,
+  isJalaliTimeAvailable,
   quickUnlocks,
   formatJalaliDate,
   formatJalaliDateTime,
   toPersianDigits,
 } from '../src/features/messages/domain/jalali';
 
-const at = (y: number, m: number, d: number, h = 0) => new Date(y, m - 1, d, h);
+const at = (y: number, m: number, d: number, h = 0, min = 0) =>
+  new Date(y, m - 1, d, h, min);
 
 describe('jalali conversions', () => {
   test('2025-03-21 is Farvardin 1 of 1404 (Nowruz)', () => {
@@ -96,12 +98,34 @@ describe('quick unlock periods', () => {
   });
 });
 
-describe('day availability', () => {
-  test('today is unavailable, tomorrow is available', () => {
+describe('day and time availability', () => {
+  test('yesterday is unavailable; today and tomorrow stay selectable', () => {
     const now = at(2026, 9, 16, 8);
     const today = jalaliOf(now);
-    expect(isJalaliDayAvailable(today.jy, today.jm, today.jd, now)).toBe(false);
-    expect(isJalaliDayAvailable(today.jy, today.jm, today.jd + 1, now)).toBe(true);
+    expect(isJalaliDayAvailable(today.jy, today.jm, today.jd - 1, now)).toBe(
+      false,
+    );
+    expect(isJalaliDayAvailable(today.jy, today.jm, today.jd, now)).toBe(true);
+    expect(isJalaliDayAvailable(today.jy, today.jm, today.jd + 1, now)).toBe(
+      true,
+    );
+  });
+
+  test('a past time on today is unavailable; a future time is available', () => {
+    const now = at(2026, 9, 16, 8, 30); // 08:30
+    const today = jalaliOf(now);
+    expect(isJalaliTimeAvailable(today.jy, today.jm, today.jd, 8, 29, now)).toBe(
+      false,
+    );
+    expect(isJalaliTimeAvailable(today.jy, today.jm, today.jd, 8, 30, now)).toBe(
+      false,
+    );
+    expect(isJalaliTimeAvailable(today.jy, today.jm, today.jd, 8, 31, now)).toBe(
+      true,
+    );
+    expect(isJalaliTimeAvailable(today.jy, today.jm, today.jd, 23, 59, now)).toBe(
+      true,
+    );
   });
 
   test('day after a month boundary is available beyond Esfand', () => {
@@ -109,6 +133,14 @@ describe('day availability', () => {
     const today = jalaliOf(now);
     expect(isJalaliDayAvailable(1405, 1, 1, now)).toBe(true);
     expect(today.jm).toBe(12);
+  });
+
+  test('jalaliToIso keeps the minute and round-trips', () => {
+    const iso = jalaliToIso(1404, 1, 1, 9, 24);
+    const d = new Date(iso);
+    expect(d.getHours()).toBe(9);
+    expect(d.getMinutes()).toBe(24);
+    expect(jalaliOf(iso)).toEqual({jy: 1404, jm: 1, jd: 1});
   });
 });
 

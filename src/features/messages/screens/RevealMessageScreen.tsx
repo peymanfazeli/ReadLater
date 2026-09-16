@@ -14,6 +14,7 @@ import {useTheme} from '../../../app/providers/ThemeProvider';
 import {formatDate} from '../domain/rules';
 import {messageRepository} from '../data';
 import {useMessage} from '../hooks/useMessages';
+import {cancelUnlock} from '../../../services/notifications/NotificationService';
 import type {RevealMessageScreenProps} from '../../../app/navigation/types';
 
 export function RevealMessageScreen({
@@ -35,6 +36,7 @@ export function RevealMessageScreen({
           setDeleting(true);
           try {
             await messageRepository.delete(messageId);
+            cancelUnlock(messageId).catch(() => {});
             navigation.popToTop();
           } catch {
             setDeleting(false);

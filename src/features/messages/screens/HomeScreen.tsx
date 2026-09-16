@@ -7,17 +7,53 @@ import {
   RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
 import {Typography} from '../../../components/Typography';
 import {Button} from '../../../components/Button';
 import {Card} from '../../../components/Card';
 import {MessageCard} from '../components/MessageCard';
 import {useTheme} from '../../../app/providers/ThemeProvider';
 import {useMessageList} from '../hooks/useMessages';
+import {
+  permissionAuthorized,
+  reconcile,
+  requestPermission,
+  openNotificationSettings,
+} from '../../../services/notifications/NotificationService';
 import type {HomeScreenProps} from '../../../app/navigation/types';
 
 export function HomeScreen({navigation}: HomeScreenProps) {
   const theme = useTheme();
   const {state, reload} = useMessageList();
+  const [notifAuthorized, setNotifAuthorized] = React.useState(true);
+  const [permissionBusy, setPermissionBusy] = React.useState(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let active = true;
+      (async () => {
+        if (state.status === 'ready') {
+          await reconcile(state.data.messages);
+        }
+        const ok = await permissionAuthorized();
+        if (active) {setNotifAuthorized(ok);}
+      })();
+      return () => {
+        active = false;
+      };
+    }, [state]),
+  );
+
+  async function enableNotifications() {
+    setPermissionBusy(true);
+    try {
+      const granted = await requestPermission();
+      if (!granted) {await openNotificationSettings();}
+      setNotifAuthorized(await permissionAuthorized());
+    } finally {
+      setPermissionBusy(false);
+    }
+  }
 
   return (
     <SafeAreaView
@@ -74,6 +110,25 @@ export function HomeScreen({navigation}: HomeScreenProps) {
                   align="center">
                   برخی پیام‌ها قابل خواندن نبودند و حذف شدند
                 </Typography>
+              </Card>
+            )}
+
+            {!notifAuthorized && (
+              <Card style={styles.notice}>
+                <Typography
+                  size="xs"
+                  color={theme.colors.secondaryText}
+                  align="center">
+                  برای آگاه شدن از باز شدن پیام‌ها، اعلان‌ها را فعال کن
+                </Typography>
+                <Button
+                  label="فعال کردن اعلان‌ها"
+                  variant="secondary"
+                  onPress={enableNotifications}
+                  disabled={permissionBusy}
+                  loading={permissionBusy}
+                  style={styles.notifAction}
+                />
               </Card>
             )}
 
@@ -171,6 +226,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingVertical: 10,
     borderWidth: 1,
+    alignItems: 'center',
+  },
+  notifAction: {
+    marginTop: 8,
+    alignSelf: 'stretch',
   },
   list: {
     paddingBottom: 16,

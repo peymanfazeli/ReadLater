@@ -68,14 +68,34 @@ export function jalaliMonthGrid(jy: number, jm: number): JalaliCell[] {
 }
 
 // A Jalali date + time of day, as an ISO UTC string (single storage format).
-export function jalaliToIso(jy: number, jm: number, jd: number, hour: number): string {
-  return jalaaliToDateObject(jy, jm, jd, hour, 0).toISOString();
+// Minute defaults to 0 so existing hour-only callers keep working.
+export function jalaliToIso(
+  jy: number,
+  jm: number,
+  jd: number,
+  hour: number,
+  minute = 0,
+): string {
+  return jalaaliToDateObject(jy, jm, jd, hour, minute).toISOString();
 }
 
-// Strict future check for a Jalali day: selectable only when later than now.
+// Strict future check for an exact Jalali time: usable only when later than
+// now. This is the single availability rule for the whole UI.
+export function isJalaliTimeAvailable(
+  jy: number,
+  jm: number,
+  jd: number,
+  hour: number,
+  minute: number,
+  now: Date,
+): boolean {
+  return jalaaliToDateObject(jy, jm, jd, hour, minute).getTime() > now.getTime();
+}
+
+// Grid check: a day is selectable while it still has any future time, so
+// today stays enabled until the last minute of the day.
 export function isJalaliDayAvailable(jy: number, jm: number, jd: number, now: Date): boolean {
-  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return jalaaliToDateObject(jy, jm, jd).getTime() > dayStart.getTime();
+  return isJalaliTimeAvailable(jy, jm, jd, 23, 59, now);
 }
 
 function addJalaliDays(jy: number, jm: number, jd: number, days: number): JalaaliDate {
@@ -99,9 +119,13 @@ export type QuickKey = 'tomorrow' | 'week' | 'month' | 'year';
 // Common future unlock points expressed in Jalali calendar arithmetic,
 // all normalized to the given hour of the day. Purely calendar-aware:
 // "1 month" adds one Jalali month (clamped), not a Gregorian 30 days.
-export function quickUnlocks(now: Date, hour: number): Record<QuickKey, string> {
+export function quickUnlocks(
+  now: Date,
+  hour: number,
+  minute = 0,
+): Record<QuickKey, string> {
   const today = jalaliOf(now);
-  const toIsoAt = (d: JalaaliDate) => jalaliToIso(d.jy, d.jm, d.jd, hour);
+  const toIsoAt = (d: JalaaliDate) => jalaliToIso(d.jy, d.jm, d.jd, hour, minute);
   return {
     tomorrow: toIsoAt(addJalaliDays(today.jy, today.jm, today.jd, 1)),
     week: toIsoAt(addJalaliDays(today.jy, today.jm, today.jd, 7)),

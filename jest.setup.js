@@ -27,6 +27,11 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+// NotifyKit's official in-memory mock (scheduling/display/spies).
+jest.mock('react-native-notify-kit', () =>
+  require('react-native-notify-kit/jest-mock'),
+);
+
 jest.mock('react-native-screens', () => {
   const React = require('react');
   const {View} = require('react-native');

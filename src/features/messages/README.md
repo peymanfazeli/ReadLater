@@ -12,8 +12,9 @@ unlock time, and reveal it after.
   kept independent of the UI so screens stay thin.
 - `createId` (`domain/id.ts`) — RFC 4122 v4 UUID source.
 - `jalali.ts` (`domain/jalali.ts`) — Persian calendar math: Jalali↔Gregorian
-  conversion, the 42-cell weekday grid, strict-future day checks, quick
-  unlocks, and Persian date formatting, all pure functions over `jalaali-js`.
+  conversion, the 42-cell weekday grid, strict-future day/time checks in
+  minutes, quick unlocks, and Persian date formatting, all pure functions
+  over `jalaali-js`.
 - `MessageRepository` (`data/MessageRepository.ts`) — the only app-facing data
   API: `list`, `get`, `create`, `delete`. Constructed with an injectable
   storage adapter and clock for tests.
@@ -23,8 +24,12 @@ unlock time, and reveal it after.
 - `HomeScreen`, `CreateMessageScreen`, `RevealMessageScreen` — screens.
 - `MessageCard` — list item for a message.
 - `JalaliDatePicker` (`components/JalaliDatePicker.tsx`) — RTL month grid with
-  prev/next navigation; disables non-future days; reports
-  `onChange(jy, jm, jd)`.
+  prev/next navigation; a day is disabled only once no future time remains on
+  it, so today stays selectable; reports `onChange(jy, jm, jd)`.
+- `CreateMessageScreen` time controls — four hour presets plus a minute
+  stepper (±1/±5). On today, passed hours and minutes are disabled and the
+  selection snaps to the next valid five-minute mark; the save button and
+  preview stay gated on a strictly-future `unlockAt`.
 
 ## Data flow
 - Screens render UI only and navigate by route name; they read state from the
@@ -82,15 +87,19 @@ unlock time, and reveal it after.
   the clock and confirm the body appears; pre-seeded unlocked record),
   corrupt JSON, and invalid/duplicate record filtering with counts.
 - `__tests__/messages.jalali.test.ts` — conversion boundaries (Nowruz, leap
-  Esfand years 1394/1403), ISO round-trips over a long day span, grid
-  alignment and 42 unique cells, quick-period arithmetic and clamping, strict
-  future-day availability, and Persian digit/date formatting.
+  Esfand years 1394/1403), ISO round-trips over a long day span and minute
+  precision, grid alignment and 42 unique cells, quick-period arithmetic and
+  clamping, strict future-day availability and strict future-minute
+  availability on today, and Persian digit/date formatting.
 - App-level render test exercises the screens against the in-memory
   AsyncStorage mock.
 
 ## Known limitations
-- Unlock time is chosen with the custom Jalali picker (day + quarter-hour
-  chip); no time-of-day input field yet beyond the four hour presets.
+- Unlock time is a Jalali day + absolute hour/minute chosen from four hour
+  presets and a minute stepper; no free-form hour entry yet beyond the
+  presets. Near midnight the snap-to-future fallback may land on an already
+  passed minute at 23:xx, in which case the hint asks the user to pick a
+  future hour.
 - Grid renders 6 weeks (42 cells) always; months needing fewer rows show a
   trailing blank row.
 - Whole-collection write on every create/delete is O(n); fine for personal
