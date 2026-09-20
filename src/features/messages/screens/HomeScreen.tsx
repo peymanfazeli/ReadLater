@@ -5,55 +5,37 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Pressable,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {Typography} from '../../../components/Typography';
 import {Button} from '../../../components/Button';
 import {Card} from '../../../components/Card';
+import {AttentionDot} from '../../../components/AttentionDot';
 import {MessageCard} from '../components/MessageCard';
 import {useTheme} from '../../../app/providers/ThemeProvider';
 import {useMessageList} from '../hooks/useMessages';
+import {useNotificationAttention} from '../../../app/providers/NotificationAttentionProvider';
 import {
-  permissionAuthorized,
   reconcile,
-  requestPermission,
-  openNotificationSettings,
 } from '../../../services/notifications/NotificationService';
 import type {HomeScreenProps} from '../../../app/navigation/types';
 
 export function HomeScreen({navigation}: HomeScreenProps) {
   const theme = useTheme();
   const {state, reload} = useMessageList();
-  const [notifAuthorized, setNotifAuthorized] = React.useState(true);
-  const [permissionBusy, setPermissionBusy] = React.useState(false);
+  const {attention} = useNotificationAttention();
 
   useFocusEffect(
     React.useCallback(() => {
-      let active = true;
       (async () => {
         if (state.status === 'ready') {
           await reconcile(state.data.messages);
         }
-        const ok = await permissionAuthorized();
-        if (active) {setNotifAuthorized(ok);}
       })();
-      return () => {
-        active = false;
-      };
     }, [state]),
   );
-
-  async function enableNotifications() {
-    setPermissionBusy(true);
-    try {
-      const granted = await requestPermission();
-      if (!granted) {await openNotificationSettings();}
-      setNotifAuthorized(await permissionAuthorized());
-    } finally {
-      setPermissionBusy(false);
-    }
-  }
 
   return (
     <SafeAreaView
@@ -61,6 +43,30 @@ export function HomeScreen({navigation}: HomeScreenProps) {
       edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <View style={styles.menuWrap}>
+              <Pressable
+                style={({pressed}) => [
+                  styles.menu,
+                  {
+                    backgroundColor: pressed
+                      ? theme.colors.border
+                      : theme.colors.surface,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="باز کردن منو"
+                onPress={() => navigation.openDrawer()}>
+                <Typography
+                  size="xl"
+                  color={theme.colors.primaryDark}
+                  style={styles.menuIcon}>
+                  ☰
+                </Typography>
+              </Pressable>
+              <AttentionDot active={attention} style={styles.menuDot} />
+            </View>
+          </View>
           <Typography size="xxxl" weight="bold" color={theme.colors.primaryText}>
             بعدابخون
           </Typography>
@@ -113,7 +119,7 @@ export function HomeScreen({navigation}: HomeScreenProps) {
               </Card>
             )}
 
-            {!notifAuthorized && (
+            {/* {!notifAuthorized && (
               <Card style={styles.notice}>
                 <Typography
                   size="xs"
@@ -130,7 +136,7 @@ export function HomeScreen({navigation}: HomeScreenProps) {
                   style={styles.notifAction}
                 />
               </Card>
-            )}
+            )} */}
 
             {state.data.messages.length === 0 ? (
               <View style={styles.empty}>
@@ -199,6 +205,28 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 24,
     paddingBottom: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    marginBottom: 12,
+  },
+  menuWrap: {
+    alignItems: 'flex-start',
+  },
+  menu: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuDot: {
+    top: -3,
+    right: -3,
+  },
+  menuIcon: {
+    lineHeight: 30,
   },
   subtitle: {
     marginTop: 8,

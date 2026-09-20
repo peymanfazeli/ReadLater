@@ -10,6 +10,8 @@ Reusable, theme-aware building blocks: text, buttons, cards, and text inputs.
 - `Button` — primary/secondary/ghost variants, disabled and loading states.
 - `Card` — rounded surface container with optional padding.
 - `TextField` — themed input with character counter and error message.
+- `AttentionDot` — red indicator dot with a jiggle loop; fades out ("wiped")
+  when `active` flips to false. Anchored by the caller's absolute style.
 
 ## Data flow
 Pure presentational components. They receive callbacks and values as props;

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Drawer + settings
+- Right-edge RTL drawer on Home (`@react-navigation/drawer`,
+  `react-native-gesture-handler` 2.25.0, `react-native-reanimated` 3.16.7):
+  opens via a ☰ menu button or edge swipe; custom content with «ورود» pinned
+  top and «تنظیمات» pinned bottom.
+- New `Settings` screen: notification permission card (disabled button when
+  on, «فعال کردن اعلان‌ها» when off) — no in-app disable by design.
+- New `Login` placeholder screen «به‌زودی» (MVP keeps accounts out).
+- Dependencies documented in the new feature READMEs; reanimated plugin added
+  to Babel, `GestureHandlerRootView` wraps the app, jest mocks extended for
+  gesture-handler + reanimated.
+
 ### Milestone 5 — release readiness
 - Identity: `versionName` 1.0.0 / `versionCode` 1, `app.json` displayName and
   `android/res/values/strings.xml` app label set to «بعدابخون», `package.json`

@@ -55,12 +55,16 @@ keyPassword=<password>
 ### Verify the built APK
 ```powershell
 $bt = "$env:ANDROID_HOME\build-tools\<version>"
-& "$bt\apksigner.bat" verify --print-certs android\app\build\outputs\apk\release\app-release.apk
-& "$bt\aapt.exe" dump badging android\app\build\outputs\apk\release\app-release.apk
+& "$bt\apksigner.bat" verify --print-certs android\app\build\outputs\apk\release\app-arm64-v8a-release.apk
+& "$bt\aapt.exe" dump badging android\app\build\outputs\apk\release\app-arm64-v8a-release.apk
 ```
 Check: app label «بعدابخون», `versionCode`/`versionName`, and that no
 `INTERNET` / `ACCESS_NETWORK_STATE` permissions survive manifest merging.
-Release APK (1.0.0): 53.94 MB, signed with the Badabekhoon key, offline-only
+Release artifacts are split per CPU architecture (`app-<abi>-release.apk`,
+~12–17 MB each) plus `app-universal-release.apk` (~50 MB). Upload the ABI
+matching each device in a direct install; the universal APK is the fallback
+for distribution channels that do not support per-ABI installs. All release
+outputs are R8-minified and signed with the Badabekhoon key; offline-only
 (only notification/clock permissions remain).
 
 ## Release notes copy (draft)

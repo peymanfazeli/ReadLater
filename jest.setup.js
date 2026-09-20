@@ -7,6 +7,13 @@ if (!global.crypto) {
   global.crypto = webcrypto;
 }
 
+// Reanimated runs its animations on a UI thread worklet; setUpTests() activates
+// the JS-thread mock so animations/frames never touch native in jest.
+require('react-native-reanimated').setUpTests();
+
+// Gesture handlers need a native component mock; the package ships jestSetup.
+require('react-native-gesture-handler/jestSetup');
+
 jest.mock('react-native-safe-area-context', () => {
   const mock = require('react-native-safe-area-context/jest/mock');
   return mock.default ?? mock;

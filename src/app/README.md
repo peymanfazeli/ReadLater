@@ -4,12 +4,16 @@ Application-level composition: providers and navigation.
 
 ## Responsibility
 - `ThemeProvider` — provides design tokens to the component tree.
+- `NotificationAttentionProvider` — exposes whether the notification
+  permission is missing (red-dot attention state) and a `refresh()`;
+  re-checks on mount and when the app returns to foreground.
 - `RootNavigator` — native stack navigator wiring screens together.
 - Navigation types — typed routes shared by screens.
 
 ## Public interfaces
 - `App` (`App.tsx`) wraps `SafeAreaProvider` → `ThemeProvider` →
-  `NavigationContainer` → `RootNavigator`.
+  `NotificationAttentionProvider` → `NavigationContainer` → `RootNavigator`.
+- `useNotificationAttention()` — `{attention, refresh}` hook.
 - `RootStackParamList` — `Home`, `CreateMessage`, `RevealMessage`.
 
 ## Data flow
