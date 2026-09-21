@@ -24,6 +24,7 @@ function makeRepo(storage: MessageStorage = new InMemoryStorage()) {
 function stored(overrides: Partial<StoredMessage> = {}): StoredMessage {
   return {
     id: 'm1',
+    title: 'self note',
     body: 'self note',
     createdAt: PAST,
     unlockAt: FUTURE,
@@ -34,12 +35,13 @@ function stored(overrides: Partial<StoredMessage> = {}): StoredMessage {
 describe('MessageRepository.create', () => {
   it('persists a validated message and returns a locked view', async () => {
     const repo = makeRepo();
-    const result = await repo.create({body: '  سلام آینده  ', unlockAt: '2026-09-01T12:00:00.000Z'});
+    const result = await repo.create({title: 'یادداشت', body: '  سلام آینده  ', unlockAt: '2026-09-01T12:00:00.000Z'});
     expect(result.ok).toBe(true);
     if (!result.ok) {return;}
     expect(result.message.status).toBe('locked');
     expect(result.message.body).toBeNull();
     expect(result.message.createdAt).toBe(NOW);
+    expect(result.message.title).toBe('یادداشت');
 
     const list = await repo.list();
     expect(list.messages).toHaveLength(1);
@@ -50,23 +52,24 @@ describe('MessageRepository.create', () => {
 
   it('rejects empty, over-long, and non-future unlock dates', async () => {
     const repo = makeRepo();
-    await expect(repo.create({body: '   ', unlockAt: FUTURE})).resolves.toEqual({
-      ok: false,
-      error: 'empty',
-    });
     await expect(
-      repo.create({body: 'x'.repeat(5001), unlockAt: FUTURE}),
+      repo.create({title: 't', body: '   ', unlockAt: FUTURE}),
+    ).resolves.toEqual({ok: false, error: 'empty'});
+    await expect(
+      repo.create({title: 't', body: 'x'.repeat(5001), unlockAt: FUTURE}),
     ).resolves.toEqual({ok: false, error: 'tooLong'});
-    await expect(repo.create({body: 'ok', unlockAt: PAST})).resolves.toEqual({
-      ok: false,
-      error: 'invalidUnlockAt',
-    });
+    await expect(
+      repo.create({title: '  ', body: 'ok', unlockAt: FUTURE}),
+    ).resolves.toEqual({ok: false, error: 'titleEmpty'});
+    await expect(
+      repo.create({title: 't', body: 'ok', unlockAt: PAST}),
+    ).resolves.toEqual({ok: false, error: 'invalidUnlockAt'});
   });
 
   it('exposes the body only once the unlock time passes', async () => {
     const storage = new InMemoryStorage();
     const repo = makeRepo(storage);
-    const created = await repo.create({body: 'سیکریت', unlockAt: FUTURE});
+    const created = await repo.create({title: 't', body: 'سیکریت', unlockAt: FUTURE});
     expect(created.ok).toBe(true);
     if (!created.ok) {
       return;
@@ -95,8 +98,8 @@ describe('MessageRepository.create', () => {
 describe('MessageRepository persistence', () => {
   it('survives an app restart (new repository, same storage)', async () => {
     const storage = new InMemoryStorage();
-    await makeRepo(storage).create({body: 'first', unlockAt: FUTURE});
-    await makeRepo(storage).create({body: 'second', unlockAt: FUTURE});
+    await makeRepo(storage).create({title: 'first', body: 'first', unlockAt: FUTURE});
+    await makeRepo(storage).create({title: 'second', body: 'second', unlockAt: FUTURE});
 
     const fresh = makeRepo(storage);
     const list = await fresh.list();
@@ -108,13 +111,14 @@ describe('MessageRepository persistence', () => {
   it('lists newest-first', async () => {
     const storage = new InMemoryStorage();
     const repo = makeRepo(storage);
-    const older = await repo.create({body: 'older', unlockAt: FUTURE});
+    const older = await repo.create({title: 'older', body: 'older', unlockAt: FUTURE});
     if (!older.ok) {
       throw new Error('create failed');
     }
     const progress = new Date('2026-06-10T12:00:00.000Z');
     const laterRepo = new MessageRepository(storage, () => progress);
     const created = await laterRepo.create({
+      title: 'newer',
       body: 'newer',
       unlockAt: '2026-10-01T12:00:00.000Z',
     });
@@ -137,7 +141,7 @@ describe('MessageRepository.get and delete', () => {
 
   it('deletes and reports when nothing was deleted', async () => {
     const repo = makeRepo();
-    const created = await repo.create({body: 'hi', unlockAt: FUTURE});
+    const created = await repo.create({title: 'hi', body: 'hi', unlockAt: FUTURE});
     if (!created.ok) {throw new Error('create failed');}
     expect(await repo.delete(created.message.id)).toBe(true);
     expect(await repo.get(created.message.id)).toBeNull();

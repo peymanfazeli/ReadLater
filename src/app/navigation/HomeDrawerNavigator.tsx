@@ -1,6 +1,6 @@
 import React from 'react';
 import {createDrawerNavigator} from '@react-navigation/drawer';
-import {useTheme} from '../providers/ThemeProvider';
+import {useTheme, useSettings} from '../providers/SettingsProvider';
 import {HomeScreen} from '../../features/messages/screens/HomeScreen';
 import {DrawerContent} from './DrawerContent';
 import type {HomeDrawerParamList} from './types';
@@ -9,14 +9,15 @@ const Drawer = createDrawerNavigator<HomeDrawerParamList>();
 
 export function HomeDrawerNavigator() {
   const theme = useTheme();
+  const {isRTL} = useSettings();
 
   return (
     <Drawer.Navigator
       id="HomeDrawer"
       screenOptions={{
         headerShown: false,
-        // Persian RTL: the drawer slides in from the right edge.
-        drawerPosition: 'right',
+        // RTL: the drawer slides in from the right edge (Persian); LTR: left.
+        drawerPosition: isRTL ? 'right' : 'left',
         drawerType: 'front',
         drawerActiveTintColor: theme.colors.primaryDark,
         drawerInactiveTintColor: theme.colors.primaryText,

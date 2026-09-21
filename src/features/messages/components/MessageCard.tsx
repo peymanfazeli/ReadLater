@@ -2,7 +2,7 @@ import React from 'react';
 import {TouchableOpacity, View, StyleSheet} from 'react-native';
 import {Typography} from '../../../components/Typography';
 import {Card} from '../../../components/Card';
-import {useTheme} from '../../../app/providers/ThemeProvider';
+import {useTheme, useTranslation} from '../../../app/providers/SettingsProvider';
 import type {Message} from '../domain/types';
 import {formatDate} from '../domain/rules';
 
@@ -13,6 +13,7 @@ type Props = {
 
 export function MessageCard({message, onPress}: Props) {
   const theme = useTheme();
+  const {t, language} = useTranslation();
   const isLocked = message.status === 'locked';
 
   return (
@@ -23,25 +24,34 @@ export function MessageCard({message, onPress}: Props) {
             <Typography size="lg">{isLocked ? '🔒' : '✉️'}</Typography>
           </View>
           <View style={styles.content}>
+            <Typography size="sm" weight="semibold" color={theme.colors.primaryText}>
+              {isLocked ? t('message.locked') : t('message.unlocked')}
+            </Typography>
             <Typography
-              size="sm"
-              weight="semibold"
-              color={theme.colors.primaryText}>
-              {isLocked ? 'پیام قفل شده' : 'پیام باز شده'}
+              size="md"
+              weight="bold"
+              color={theme.colors.primaryText}
+              numberOfLines={2}
+              style={styles.title}>
+              {message.title}
             </Typography>
             <Typography
               size="xs"
               color={theme.colors.secondaryText}
               style={styles.date}>
               {isLocked
-                ? `باز می‌شود: ${formatDate(message.unlockAt)}`
-                : `ساخته شده: ${formatDate(message.createdAt)}`}
+                ? t('message.unlocksAt', {
+                    date: formatDate(message.unlockAt, language),
+                  })
+                : t('message.createdAt', {
+                    date: formatDate(message.createdAt, language),
+                  })}
             </Typography>
           </View>
           <Typography
             size="sm"
             color={isLocked ? theme.colors.primary : theme.colors.successText}>
-            {isLocked ? ' منتظر' : ' باز کن'}
+            {isLocked ? t('message.statusWaiting') : t('message.statusOpen')}
           </Typography>
         </View>
       </Card>
@@ -67,7 +77,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 12,
   },
-  date: {
+  title: {
     marginTop: 2,
+  },
+  date: {
+    marginTop: 4,
   },
 });

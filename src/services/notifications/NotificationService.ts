@@ -9,15 +9,27 @@ import notifee, {
 const CHANNEL_ID = 'messages';
 const MESSAGE_ID_KEY = 'messageId';
 
-// Channel is created idempotently by Android; a call on every schedule is
-// cheap and avoids module-level state.
+// Channel names are fixed by Android after the first creation, so the name is
+// deliberately static rather than localized (a language switch would not
+// rename an existing channel). The visible notification title/body below are
+// localized instead.
+const DEFAULT_CHANNEL_NAME = 'باز شدن پیام‌ها';
+const DEFAULT_TITLE = 'بعدابخون';
+const DEFAULT_BODY = 'پیام تو آماده‌ی خواندن شده است';
+
+// Persian fallbacks used when a caller has no language context (e.g. the
+// reconcile path). Screens pass explicit localized copy.
+export type NotificationCopy = {title: string; body: string};
+
 async function ensureChannel(): Promise<void> {
   await notifee.createChannel({
     id: CHANNEL_ID,
-    name: 'باز شدن پیام‌ها',
+    name: DEFAULT_CHANNEL_NAME,
     importance: AndroidImportance.HIGH,
   });
 }
+
+const emptyCopy: NotificationCopy = {title: DEFAULT_TITLE, body: DEFAULT_BODY};
 
 function messageIdOf(
   notification: Notification | undefined,
@@ -47,13 +59,15 @@ export async function requestPermission(): Promise<boolean> {
 export async function scheduleUnlock(
   messageId: string,
   unlockAt: Date,
+  copy?: NotificationCopy,
 ): Promise<void> {
+  const {title, body} = copy ?? emptyCopy;
   await ensureChannel();
   await notifee.createTriggerNotification(
     {
       id: messageId,
-      title: 'بعدابخون',
-      body: 'پیام تو آماده‌ی خواندن شده است',
+      title,
+      body,
       data: {[MESSAGE_ID_KEY]: messageId},
       android: {channelId: CHANNEL_ID},
     },
@@ -75,6 +89,7 @@ export async function cancelUnlock(messageId: string): Promise<void> {
 // id references the same message and is skipped.
 export async function reconcile(
   messages: ReadonlyArray<{id: string; unlockAt: string}>,
+  copy?: NotificationCopy,
 ): Promise<void> {
   const now = Date.now();
   const pending = new Set(await notifee.getTriggerNotificationIds());
@@ -84,7 +99,7 @@ export async function reconcile(
       .map(m =>
         pending.has(m.id)
           ? Promise.resolve()
-          : scheduleUnlock(m.id, new Date(m.unlockAt)),
+          : scheduleUnlock(m.id, new Date(m.unlockAt), copy),
       ),
   );
 }

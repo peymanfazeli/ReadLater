@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+### Milestone 5/6 — bilingual i18n + light/dark themes
+- Full i18n catalog (`src/i18n`): `fa` is the typed source of truth,
+  `english: Record<TranslationKey, string>` gives compile-time key safety,
+  `translate` falls back `language → fa → key`, `{param}` interpolation.
+  Every user-facing string across all screens/components/drawer now routes
+  through `t()`.
+- Layout direction switches live with no reload: the root `App` wrapper sets
+  the `direction` style from the active language; `applyRTLSetting()` keeps
+  the native `I18nManager` preference in step; native-stack headers are
+  hidden (`headerShown: false`) so all header copy/direction is JS-controlled;
+  the drawer position derives from RTL.
+- Theme system (`src/theme/palettes`): full `light` (per DESIGN) and `dark`
+  palettes with a shared `ColorToken` set plus `onPrimary`; Button primary now
+  uses `primary`/`onPrimary`.
+- Persisted settings: new `SettingsProvider` (`@badabekhoon/settings/v1`)
+  owns `{language, scheme}` with validated load and best-effort persist; keeps
+  `useSettings`/`useTheme`/`useTranslation`/`useDirection` hooks.
+- Circular theme transition: `beginThemeTransition(origin)` flips the scheme
+  synchronously and `ThemeWave` shrinks an old-background disc onto the toggle
+  origin (reanimated, 420ms); reduced motion → plain flip; rapid toggles
+  remount via a counter key. Theme toggles available in the drawer and in
+  `Settings`.
+- Message titles: required `title` (1–80, trimmed, `titleEmpty`/`titleTooLong`
+  errors) in the domain model, repository, `CreateMessageScreen` (new field),
+  `MessageCard`, and `RevealMessageScreen`. Title is safe metadata and stays
+  visible while locked; pre-title records are dropped on sanitize (pre-release
+  only) and counted on Home.
+- Language-aware dates: `formatDate(iso, language)` (Jalali for fa, Gregorian
+  for en) and `monthNames`/`weekdayNames`/`formatJalaliDate(Time)` in jalali.ts
+  with English month/weekday names; Persian digits only for fa.
+- `Settings` screen: Language section (fa/en) and Theme section (light/dark)
+  chips plus the existing notifications card.
+- Reveal screen now shows the title and adds a Copy action for an unlocked
+  body via `@react-native-clipboard/clipboard` 1.16.3 (documented in the
+  messages README; memo clipboard mock added to `jest.setup.js`), and
+  localizes dates/confirm/empty states.
+- Notification copy is localized: `scheduleUnlock`/`reconcile` accept
+  `{title, body}`; the Android channel name stays fixed (documented).
+- Old static `ThemeProvider.tsx` deleted; module READMEs updated (theme, i18n,
+  app, notifications, messages).
+- Checks: `tsc` clean, `eslint` 0 problems, 58/58 jest tests.
+
 ### Drawer + settings
 - Right-edge RTL drawer on Home (`@react-navigation/drawer`,
   `react-native-gesture-handler` 2.25.0, `react-native-reanimated` 3.16.7):

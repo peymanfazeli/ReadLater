@@ -1,87 +1,103 @@
 # BUILD_RELEASE.md
 
-## Release principles
+## Release Principles
+
 - Build and sign only from the project root.
+- Verify the project root before every build, signing, or artifact operation.
 - Keep keystores outside version control.
 - Never commit passwords, signing keys, API keys, or local machine paths.
-- Use a dedicated release key for the app and document its secure backup process.
+- Use a dedicated release key for the application.
+- Document the secure backup and recovery process for the release key.
+- Never use debug signing for a production or store-upload release.
 - Verify application ID, version code, version name, app label, icon, and permissions before release.
+- Record the exact build commands, environment, and artifact checks for every release candidate.
 
-## Pre-release checklist
-- [ ] Debug logging removed or disabled.
-- [ ] No secrets in source or generated artifacts.
-- [ ] Notification permission behavior tested.
+## Pre-release Checklist
+
+- [ ] Release build uses the permanent release key.
+- [ ] Debug logging is removed or disabled.
+- [ ] No secrets exist in source code or generated artifacts.
+- [ ] No sensitive message content is included in logs or notifications.
+- [ ] Notification permission behavior is tested on supported Android versions.
 - [ ] Locked message content is not exposed in notifications.
 - [ ] App survives cold start and process restart.
-- [ ] RTL checked on representative devices.
-- [ ] Offline behavior checked.
-- [ ] Privacy statement prepared.
-- [ ] Store screenshots and Persian description prepared.
-- [ ] Signed release artifact installed on a clean device.
-- [ ] Upgrade from previous version tested when applicable.
+- [ ] Scheduled notifications behave correctly after device restart when supported.
+- [ ] RTL is checked on representative devices and screen sizes.
+- [ ] English LTR layout is checked.
+- [ ] Light and dark themes are checked.
+- [ ] Accessibility labels, text scaling, and touch targets are checked.
+- [ ] Offline behavior is verified.
+- [ ] Persistence and message recovery are tested.
+- [ ] Privacy statement is prepared and matches the implemented behavior.
+- [ ] Store screenshots and Persian store description are prepared.
+- [ ] Application ID and package configuration are verified.
+- [ ] Version code and version name are verified.
+- [ ] App label and launcher icon are verified.
+- [ ] Merged manifest permissions are reviewed.
+- [ ] Signed release artifact is installed on a clean device.
+- [ ] Release artifact launches and works without development tooling.
+- [ ] Upgrade from the previous version is tested when applicable.
+- [ ] Release artifact integrity and signing certificate are verified.
+- [ ] Store-specific technical and policy requirements are verified.
+- [ ] Release notes and verification results are recorded.
 
 ## Bazaar and Myket
-Check each store's current technical requirements at submission time. Do not hard-code assumptions about required API levels, signing formats, screenshots, privacy declarations, or content policies. Record the verified requirements and date in the release notes.
 
-## Signing the release build
-The release buildType reads `android/keystore.properties` when present and
-falls back to debug signing when it or the keystore file is missing (keeps CI
-green before the real key exists). A placeholder keystore was generated for
-pipeline validation only — generate the permanent release key and secure it
-before any store upload.
+Check each store's current technical and policy requirements at submission time.
 
-### Generate the release key (once, securely)
+Do not hard-code assumptions about:
+
+- Required Android API levels
+- Target SDK requirements
+- Signing formats
+- Artifact formats
+- Application IDs
+- Screenshot dimensions
+- Privacy declarations
+- Content policies
+- Required metadata
+- Permission disclosures
+
+Record the verified requirements and verification date in the release notes.
+
+Before submission, confirm that:
+
+- The package name is stable and correct.
+- The release artifact is signed with the permanent release key.
+- The version code is greater than the previously published version when applicable.
+- The version name matches the intended release.
+- Store metadata accurately describes the implemented functionality.
+- Privacy statements match actual data handling and permissions.
+- No unimplemented feature is advertised.
+
+## Signing the Release Build
+
+The release build must fail clearly when the required release signing configuration or keystore is missing.
+
+**Do not silently fall back to debug signing for a release build.**
+
+A placeholder keystore may be generated for local pipeline validation only. It must never be used for a production store upload.
+
+Before any store submission:
+
+- Generate the permanent release key.
+- Store it securely outside version control.
+- Configure the release signing properties locally or through a secure CI secret mechanism.
+- Verify the signing certificate.
+- Confirm that the release artifact is signed with the intended certificate.
+- Keep the release keystore and passwords backed up securely.
+
+If the project temporarily supports unsigned or debug-signed local validation, the resulting artifact must be clearly marked as non-production and must not be submitted to a store.
+
+### Generate the Release Key (Once, Securely)
+
+Run the following command from a secure location. Store the keystore in an approved secure location and configure the project to reference it without committing it.
+
 ```powershell
-keytool -genkeypair -v -storetype PKCS12 -keystore badabekhoon-release.keystore `
-  -alias badabekhoon -keyalg RSA -keysize 2048 -validity 10000 `
+keytool -genkeypair -v -storetype PKCS12 `
+  -keystore badabekhoon-release.keystore `
+  -alias badabekhoon `
+  -keyalg RSA `
+  -keysize 2048 `
+  -validity 10000 `
   -dname "CN=Badabekhoon, OU=Release, O=Badabekhoon, C=IR"
-```
-- Use a strong random password; back it up with the keystore file in at least
-  two safe places. Losing it means losing the release identity — the store
-  cannot re-sign your updates.
-- Never commit the keystore or passwords. `android/keystore.properties` is
-  gitignored.
-
-### `android/keystore.properties` (gitignored)
-```properties
-storeFile=app/badabekhoon-release.keystore
-storePassword=<password>
-keyAlias=badabekhoon
-keyPassword=<password>
-```
-`storeFile` is resolved via `rootProject.file(...)`, so it is relative to the
-`android/` directory.
-
-### Verify the built APK
-```powershell
-$bt = "$env:ANDROID_HOME\build-tools\<version>"
-& "$bt\apksigner.bat" verify --print-certs android\app\build\outputs\apk\release\app-arm64-v8a-release.apk
-& "$bt\aapt.exe" dump badging android\app\build\outputs\apk\release\app-arm64-v8a-release.apk
-```
-Check: app label «بعدابخون», `versionCode`/`versionName`, and that no
-`INTERNET` / `ACCESS_NETWORK_STATE` permissions survive manifest merging.
-Release artifacts are split per CPU architecture (`app-<abi>-release.apk`,
-~12–17 MB each) plus `app-universal-release.apk` (~50 MB). Upload the ABI
-matching each device in a direct install; the universal APK is the fallback
-for distribution channels that do not support per-ABI installs. All release
-outputs are R8-minified and signed with the Badabekhoon key; offline-only
-(only notification/clock permissions remain).
-
-## Release notes copy (draft)
-### Privacy statement
-بعدابخون کاملاً آفلاین و محلی کار می‌کند. پیام‌ها فقط روی دستگاه شما
-ذخیره می‌شوند و هرگز به سروری ارسال نمی‌شوند. این برنامه به اینترنت، حساب
-کاربری یا موقعیت مکانی دسترسی ندارد، تبلیغات و آنالیتیکس ندارد، و هیچ
-داده‌ای از شما جمع‌آوری نمی‌کند. محتوای پیام‌های قفل‌شده تا رسیدن زمان از
-قفل درآیند، در هیچ‌جایی نمایش داده نمی‌شود.
-
-### Store description
-پیامی برای خودت بنویس، آینده بازش کن. بعدابخون یک پیام‌نویس خصوصی برای
-نسخه‌ی آینده‌ی خودت است: متن خود را بنویس، یک روز و ساعت (شمسی) برای باز
-شدن انتخاب کن، و برنامه پیام را تا همان لحظه قفل نگه می‌دارد و با اعلان به
-تو یادآوری می‌کند.
-- کاملاً محلی و آفلاین؛ پیام‌ها فقط روی دستگاه خودت می‌مانند
-- بدون حساب کاربری، بدون تبلیغات، بدون جمع‌آوری داده
-- انتخاب تاریخ و ساعت شمسی با تقویم راست‌به‌چپ فارسی
-- پشتیبانی از باز شدن همان لحظه‌ای، روز بعد، یک هفته، یک ماه یا یک سال بعد
-- اعلان محلی یادآور باز شدن پیام (حتی پس از ری‌استارت گوشی)

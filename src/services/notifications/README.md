@@ -16,11 +16,13 @@ or singleton, so tests exercise the same entry points the screens use.
 - `requestPermission(): Promise<boolean>` — idempotently creates the
   `messages` channel, then prompts for `POST_NOTIFICATIONS` (Android 13+);
   returns the resulting authorized state.
-- `scheduleUnlock(messageId, unlockAt: Date): Promise<void>` — schedules a
-  `TIMESTAMP` trigger notification keyed by the message id.
+- `scheduleUnlock(messageId, unlockAt: Date, copy?): Promise<void>` — schedules
+  a `TIMESTAMP` trigger notification keyed by the message id. `copy` is
+  `{title, body}` localized by the caller (screens pass `t()` values); the
+  Persian values are the fallback for callers without language context.
 - `cancelUnlock(messageId): Promise<void>` — cancels the pending trigger for
   one message.
-- `reconcile(messages: {id, unlockAt}[]): Promise<void>` — schedules any
+- `reconcile(messages: {id, unlockAt}[], copy?): Promise<void>` — schedules any
   future unlock that has no pending alarm; idempotent, safe to run on every
   Home focus.
 - `getInitialMessageId(): Promise<string | null>` — the message id behind a
@@ -43,8 +45,9 @@ or singleton, so tests exercise the same entry points the screens use.
   `onUnlockPress` guarded by `navigationRef.isReady()`.
 
 ## Privacy
-The notification shows a fixed title ("بعدابخون") and a fixed body
-("پیام تو آماده‌ی خواندن شده است"). The only dynamic payload is
+The notification shows localized title/body copy ("بعدابخون"/"پیام تو آماده‌ی
+خواندن شده است" for fa; the catalog values for en) — a user-facing reminder
+that "a message opened", never its content. The only dynamic payload is
 `data.messageId`; no part of the message body, and no unlock timestamp, ever
 enters a notification. Locked-body isolation is unaffected: the reveal screen
 still derives status from `unlockAt` and the repository still nulls the body.

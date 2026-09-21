@@ -39,6 +39,15 @@ jest.mock('react-native-notify-kit', () =>
   require('react-native-notify-kit/jest-mock'),
 );
 
+// Clipboard ships a native TurboModule; mock the JS surface for tests.
+jest.mock('@react-native-clipboard/clipboard', () => ({
+  __esModule: true,
+  default: {
+    setString: jest.fn(async () => {}),
+    getString: jest.fn(async () => ''),
+  },
+}));
+
 jest.mock('react-native-screens', () => {
   const React = require('react');
   const {View} = require('react-native');

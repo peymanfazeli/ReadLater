@@ -1,11 +1,11 @@
 import React, {useState, useMemo, useCallback} from 'react';
 import {View, Text, StyleSheet, Pressable} from 'react-native';
 import {Typography} from '../../../components/Typography';
-import {useTheme} from '../../../app/providers/ThemeProvider';
+import {useTheme, useTranslation} from '../../../app/providers/SettingsProvider';
 import {
   jalaliOf,
-  JALALI_MONTH_NAMES,
-  WEEKDAY_NAMES,
+  monthNames,
+  weekdayNames,
   toPersianDigits,
   jalaliMonthGrid,
   isJalaliDayAvailable,
@@ -20,6 +20,9 @@ type Props = {
 
 export function JalaliDatePicker({value, onChange, disabled}: Props) {
   const theme = useTheme();
+  const {t, language} = useTranslation();
+  const monthLabel = monthNames(language);
+  const weekLabel = weekdayNames(language);
   const today = useMemo(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()),
     [],
@@ -52,24 +55,24 @@ export function JalaliDatePicker({value, onChange, disabled}: Props) {
           disabled={disabled}
           style={styles.nav}
           accessibilityRole="button"
-          accessibilityLabel="ماه قبل">
+          accessibilityLabel={t('picker.previousMonth')}>
           <Text style={[styles.navLabel, {color: theme.colors.primary}]}>{'‹'}</Text>
         </Pressable>
         <Typography size="md" weight="semibold" color={theme.colors.primaryText}>
-          {toPersianDigits(JALALI_MONTH_NAMES[month.jm - 1])} {toPersianDigits(month.jy)}
+          {formatMonth(month.jm, month.jy, monthLabel, language)}
         </Typography>
         <Pressable
           onPress={() => addMonth(1)}
           disabled={disabled}
           style={styles.nav}
           accessibilityRole="button"
-          accessibilityLabel="ماه بعد">
+          accessibilityLabel={t('picker.nextMonth')}>
           <Text style={[styles.navLabel, {color: theme.colors.primary}]}>{'›'}</Text>
         </Pressable>
       </View>
 
       <View style={styles.weekrow}>
-        {WEEKDAY_NAMES.map(d => (
+        {weekLabel.map(d => (
           <View key={d} style={styles.weekcell}>
             <Typography size="xs" weight="medium" color={theme.colors.secondaryText}>
               {d}
@@ -92,6 +95,19 @@ export function JalaliDatePicker({value, onChange, disabled}: Props) {
       </View>
     </View>
   );
+}
+
+// Month name rendered with the correct digit set for the active language.
+function formatMonth(
+  jm: number,
+  jy: number,
+  names: readonly string[],
+  language: 'fa' | 'en',
+): string {
+  const name = names[jm - 1];
+  return language === 'fa'
+    ? `${toPersianDigits(name)} ${toPersianDigits(jy)}`
+    : `${name} ${jy}`;
 }
 
 function DayCell({

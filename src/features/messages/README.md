@@ -7,14 +7,18 @@ unlock time, and reveal it after.
 ## Public interfaces
 - `StoredMessage` / `Message` / `MessageStatus` / `deriveStatus` / `toView`
   (`domain/types.ts`) — persisted vs. public shapes and status derivation.
-- `validateBody` / `validateUnlockAt` / `sanitizeStoredRecord` /
-  `MAX_BODY_LENGTH` / `formatDate` (`domain/rules.ts`) — validation rules,
-  kept independent of the UI so screens stay thin.
+- `validateTitle` / `validateBody` / `validateUnlockAt` /
+  `sanitizeStoredRecord` / `MAX_TITLE_LENGTH` (80) / `MAX_BODY_LENGTH` (5000)
+  / `formatDate` (`domain/rules.ts`) — validation rules, kept independent of
+  the UI so screens stay thin. Title and body validate independently with
+  distinct error codes (`titleEmpty`/`titleTooLong` vs `empty`/`tooLong`) so
+  the UI can localize each field's message separately.
 - `createId` (`domain/id.ts`) — RFC 4122 v4 UUID source.
 - `jalali.ts` (`domain/jalali.ts`) — Persian calendar math: Jalali↔Gregorian
   conversion, the 42-cell weekday grid, strict-future day/time checks in
-  minutes, quick unlocks, and Persian date formatting, all pure functions
-  over `jalaali-js`.
+  minutes, quick unlocks, and date formatting for both languages (Persian
+  digits/names for `fa`, Gregorian + English names for `en`), all pure
+  functions over `jalaali-js`.
 - `MessageRepository` (`data/MessageRepository.ts`) — the only app-facing data
   API: `list`, `get`, `create`, `delete`. Constructed with an injectable
   storage adapter and clock for tests.
@@ -29,13 +33,20 @@ unlock time, and reveal it after.
 - `CreateMessageScreen` time controls — four hour presets plus a minute
   stepper (±1/±5). On today, passed hours and minutes are disabled and the
   selection snaps to the next valid five-minute mark; the save button and
-  preview stay gated on a strictly-future `unlockAt`.
+  preview stay gated on a strictly-future `unlockAt`. The screen now collects
+  a `title` (required, 1–80 chars) alongside the body and validates each
+  independently.
+- All screens and shared copy read from the i18n catalog via `useTranslation()`
+  — no hard-coded user-facing strings. `RevealMessageScreen` shows the title,
+  offers Copy for an unlocked body (`@react-native-clipboard/clipboard`), and
+  localizes its dates.
 
 ## Data flow
 - Screens render UI only and navigate by route name; they read state from the
   hooks and call `messageRepository`.
-- `CreateMessageScreen` validates the trimmed body against `validateBody`
-  (1–5000 chars) and an injected unlock time, then calls `create`.
+- `CreateMessageScreen` validates the trimmed title and body against
+  `validateTitle`/`validateBody` (1–80 / 1–5000 chars) and an injected unlock
+  time, then calls `create`.
 - `MessageRepository` validates, generates id/createdAt, and persists the
   whole collection as one JSON array under `@badabekhoon/messages/v1`.
 - Status is always derived at read time from `unlockAt`; `toView` nulls out
@@ -72,15 +83,21 @@ unlock time, and reveal it after.
   Package engines require Node >=20 at install time; all build/test tooling
   runs Node 18 without honoring `engine-strict`, so this is install-time only.
   "Documented dependency purpose" stored here.
+- `@react-native-clipboard/clipboard` (1.16.3) — clips the revealed body to
+  the clipboard for the Copy action. RN core removed its Clipboard API, so
+  the community module is the standard minimal path; it is Android
+  autolinked with no additional native config. No jest mocking beyond the
+  JS-surface mock in `jest.setup.js`.
 - Shared components (`Typography`, `Button`, `Card`, `TextField`).
 - Theme tokens via `useTheme`; navigation types from `src/app/navigation`.
 - `src/services/storage` — the storage adapter boundary (see its README).
 
 ## Test strategy
 - `__tests__/messages.domain.test.ts` — validation boundaries (empty/trim/
-  max/over-long), unlock-date validation (past/now/invalid/future),
-  record sanitization, status derivation at the `now` boundary, id format
-  and uniqueness.
+  max/over-long for both title and body), unlock-date validation
+  (past/now/invalid/future), record sanitization (including records written
+  before the title field existed being dropped), status derivation at the
+  `now` boundary, id format and uniqueness, date formatting for fa and en.
 - `__tests__/messages.repository.test.ts` — create persistence, restart
   survival (new repository on the same storage), newest-first ordering,
   get/delete/missing-id, locked-body isolation (create locked, then advance
@@ -104,7 +121,8 @@ unlock time, and reveal it after.
   trailing blank row.
 - Whole-collection write on every create/delete is O(n); fine for personal
   scale, revisit at thousands of messages.
-- Home shows a dismissible-free notice when storage was corrupt; no recovery
-  of dropped records (unreadable data cannot be restored by definition).
-- Screens use hard-coded Persian copy; no string catalog yet.
-- Copy-to-clipboard and reveal animation are deferred.
+- Home shows a dismissible-free notice when storage was corrupt or records
+  were dropped; no recovery of dropped records (unreadable data cannot be
+  restored by definition). Records written before the required `title` field
+  (pre-release builds only) are dropped and counted here.
+- Reveal animation for an unlocked message is deferred.

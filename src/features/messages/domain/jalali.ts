@@ -5,6 +5,7 @@
   jalaaliMonthLength,
   type JalaaliDate,
 } from 'jalaali-js';
+import type {Language} from '../../../i18n';
 
 export const JALALI_MONTH_NAMES = [
   'فروردین',
@@ -21,8 +22,41 @@ export const JALALI_MONTH_NAMES = [
   'اسفند',
 ] as const;
 
+// English names for the same Jalali months (used by the English date picker).
+export const JALALI_MONTH_NAMES_EN = [
+  'Farvardin',
+  'Ordibehesht',
+  'Khordad',
+  'Tir',
+  'Mordad',
+  'Shahrivar',
+  'Mehr',
+  'Aban',
+  'Azar',
+  'Dey',
+  'Bahman',
+  'Esfand',
+] as const;
+
 // Persian weeks start on Saturday; index 0 == Saturday.
 export const WEEKDAY_NAMES = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'] as const;
+export const WEEKDAY_NAMES_EN = [
+  'Sa',
+  'Su',
+  'Mo',
+  'Tu',
+  'We',
+  'Th',
+  'Fr',
+] as const;
+
+export function monthNames(language: Language = 'fa'): readonly string[] {
+  return language === 'fa' ? JALALI_MONTH_NAMES : JALALI_MONTH_NAMES_EN;
+}
+
+export function weekdayNames(language: Language = 'fa'): readonly string[] {
+  return language === 'fa' ? WEEKDAY_NAMES : WEEKDAY_NAMES_EN;
+}
 
 const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 
@@ -134,16 +168,28 @@ export function quickUnlocks(
   };
 }
 
-export function formatJalaliDate(iso: string | Date): string {
+export function formatJalaliDate(
+  iso: string | Date,
+  language: Language = 'fa',
+): string {
   const j = jalaliOf(iso);
-  return `${toPersianDigits(j.jd)} ${JALALI_MONTH_NAMES[j.jm - 1]} ${toPersianDigits(j.jy)}`;
+  if (language === 'fa') {
+    return `${toPersianDigits(j.jd)} ${JALALI_MONTH_NAMES[j.jm - 1]} ${toPersianDigits(j.jy)}`;
+  }
+  return `${j.jd} ${JALALI_MONTH_NAMES_EN[j.jm - 1]} ${j.jy}`;
 }
 
-export function formatJalaliDateTime(iso: string | Date): string {
+export function formatJalaliDateTime(
+  iso: string | Date,
+  language: Language = 'fa',
+): string {
   const d = iso instanceof Date ? iso : new Date(iso);
   const j = jalaliOf(d);
-  const weekday = WEEKDAY_NAMES[(d.getDay() + 1) % 7];
+  const weekdayIndex = (d.getDay() + 1) % 7;
   const hour = d.getHours();
   const minute = d.getMinutes();
-  return `${weekday} ${toPersianDigits(j.jd)} ${JALALI_MONTH_NAMES[j.jm - 1]} ${toPersianDigits(j.jy)}، ساعت ${toPersianDigits(hour)}:${toPersianDigits(String(minute).padStart(2, '0'))}`;
+  if (language === 'fa') {
+    return `${WEEKDAY_NAMES[weekdayIndex]} ${toPersianDigits(j.jd)} ${JALALI_MONTH_NAMES[j.jm - 1]} ${toPersianDigits(j.jy)}، ساعت ${toPersianDigits(hour)}:${toPersianDigits(String(minute).padStart(2, '0'))}`;
+  }
+  return `${WEEKDAY_NAMES_EN[weekdayIndex]} ${j.jd} ${JALALI_MONTH_NAMES_EN[j.jm - 1]} ${j.jy}, ${hour}:${String(minute).padStart(2, '0')}`;
 }

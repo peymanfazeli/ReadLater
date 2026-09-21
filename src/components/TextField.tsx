@@ -1,6 +1,6 @@
 import React from 'react';
 import {TextInput as RNTextInput, StyleSheet, View, Text, ViewStyle} from 'react-native';
-import {useTheme} from '../app/providers/ThemeProvider';
+import {useTheme} from '../app/providers/SettingsProvider';
 
 type Props = {
   value: string;
@@ -10,6 +10,7 @@ type Props = {
   maxLength?: number;
   error?: string;
   style?: ViewStyle;
+  accessibilityLabel?: string;
 };
 
 export function TextField({
@@ -20,6 +21,7 @@ export function TextField({
   maxLength,
   error,
   style,
+  accessibilityLabel,
 }: Props) {
   const theme = useTheme();
 
@@ -43,7 +45,7 @@ export function TextField({
         placeholderTextColor={theme.colors.secondaryText}
         multiline={multiline}
         maxLength={maxLength}
-        textAlign="right"
+        accessibilityLabel={accessibilityLabel}
         textAlignVertical={multiline ? 'top' : 'center'}
       />
       {maxLength != null && (
@@ -74,7 +76,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    writingDirection: 'rtl',
   },
   multiline: {
     minHeight: 160,
@@ -83,11 +84,11 @@ const styles = StyleSheet.create({
   },
   counter: {
     fontSize: 12,
-    textAlign: 'left',
     marginTop: 4,
   },
   error: {
     fontSize: 12,
     marginTop: 4,
+    lineHeight: 18,
   },
 });

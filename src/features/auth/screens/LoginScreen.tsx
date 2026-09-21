@@ -4,33 +4,35 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {Typography} from '../../../components/Typography';
 import {Button} from '../../../components/Button';
 import {Card} from '../../../components/Card';
-import {useTheme} from '../../../app/providers/ThemeProvider';
+import {useTheme, useTranslation} from '../../../app/providers/SettingsProvider';
 import type {LoginScreenProps} from '../../../app/navigation/types';
 
 export function LoginScreen({navigation}: LoginScreenProps) {
   const theme = useTheme();
+  const {t} = useTranslation();
 
   return (
     <SafeAreaView
       style={[styles.safe, {backgroundColor: theme.colors.background}]}
       edges={['top', 'left', 'right']}>
       <View style={styles.container}>
+        <Typography size="xl" weight="bold" color={theme.colors.primaryText}>
+          {t('screenLogin')}
+        </Typography>
+
         <View style={styles.center}>
           <Card style={styles.card}>
-            <Typography size="xl" weight="bold" color={theme.colors.primaryText}>
-              ورود
-            </Typography>
             <Typography
               size="md"
               color={theme.colors.secondaryText}
               style={styles.hint}>
-              ارتباط با حساب کاربری به‌زودی اضافه می‌شود.
+              {t('login.comingSoon')}
             </Typography>
           </Card>
         </View>
 
         <Button
-          label="بازگشت"
+          label={t('actions.back')}
           variant="ghost"
           onPress={() => navigation.goBack()}
           style={styles.back}

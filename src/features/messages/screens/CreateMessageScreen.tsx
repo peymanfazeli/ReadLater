@@ -5,8 +5,13 @@ import {Typography} from '../../../components/Typography';
 import {Button} from '../../../components/Button';
 import {TextField} from '../../../components/TextField';
 import {Card} from '../../../components/Card';
-import {useTheme} from '../../../app/providers/ThemeProvider';
-import {validateBody, MAX_BODY_LENGTH} from '../domain/rules';
+import {useTheme, useTranslation} from '../../../app/providers/SettingsProvider';
+import {
+  validateBody,
+  validateTitle,
+  MAX_BODY_LENGTH,
+  MAX_TITLE_LENGTH,
+} from '../domain/rules';
 import {messageRepository} from '../data';
 import {
   toPersianDigits,
@@ -19,25 +24,34 @@ import {
 import {JalaliDatePicker} from '../components/JalaliDatePicker';
 import type {CreateMessageScreenProps} from '../../../app/navigation/types';
 
-const HOUR_OPTIONS = [
-  {hour: 9, label: '۹:۰۰ صبح'},
-  {hour: 12, label: '۱۲:۰۰ ظهر'},
-  {hour: 17, label: '۱۷:۰۰ عصر'},
-  {hour: 21, label: '۲۱:۰۰ شب'},
-] as const;
+const HOURS: {hour: number; key: 'hours.9' | 'hours.12' | 'hours.17' | 'hours.21'}[] = [
+  {hour: 9, key: 'hours.9'},
+  {hour: 12, key: 'hours.12'},
+  {hour: 17, key: 'hours.17'},
+  {hour: 21, key: 'hours.21'},
+];
 
 type QuickKey = 'tomorrow' | 'week' | 'month' | 'year';
-const QUICK_OPTIONS: {key: QuickKey; label: string}[] = [
-  {key: 'tomorrow', label: 'فردا'},
-  {key: 'week', label: '۱ هفته بعد'},
-  {key: 'month', label: '۱ ماه بعد'},
-  {key: 'year', label: '۱ سال بعد'},
+const QUICK_KEYS: {key: QuickKey; tkey: 'quick.tomorrow' | 'quick.week' | 'quick.month' | 'quick.year'}[] = [
+  {key: 'tomorrow', tkey: 'quick.tomorrow'},
+  {key: 'week', tkey: 'quick.week'},
+  {key: 'month', tkey: 'quick.month'},
+  {key: 'year', tkey: 'quick.year'},
 ];
+
+type SaveError =
+  | 'empty'
+  | 'tooLong'
+  | 'titleEmpty'
+  | 'titleTooLong'
+  | 'invalidUnlockAt';
 
 export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
   const theme = useTheme();
+  const {t, language} = useTranslation();
+  const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [domainError, setDomainError] = useState<string | null>(null);
+  const [domainError, setDomainError] = useState<SaveError | null>(null);
   const [saving, setSaving] = useState(false);
   const [persistError, setPersistError] = useState<string | null>(null);
 
@@ -48,6 +62,10 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
   } | null>(null);
   const [selectedHour, setSelectedHour] = useState<number>(9);
   const [selectedMinute, setSelectedMinute] = useState<number>(0);
+
+  const trimmedTitle = title.trim();
+  const titleResult = validateTitle(title);
+  const titleValid = titleResult.ok;
 
   const trimmed = body.trim();
   const bodyResult = validateBody(body);
@@ -96,8 +114,8 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
     unlockISO != null && new Date(unlockISO).getTime() > Date.now();
 
   const unlockPreview = useMemo(
-    () => (unlockISO ? formatJalaliDateTime(unlockISO) : null),
-    [unlockISO],
+    () => (unlockISO ? formatJalaliDateTime(unlockISO, language) : null),
+    [unlockISO, language],
   );
 
   // When the picked day/time combo already passed, snap to the next valid
@@ -140,22 +158,26 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
   };
 
   const domainErrorMessage =
-    domainError === 'empty'
-      ? 'لطفاً پیامی بنویسید'
-      : domainError === 'tooLong'
-        ? 'پیام خیلی طولانی است'
-        : domainError === 'invalidUnlockAt'
-          ? 'تاریخ باز شدن نامعتبر است'
-          : null;
+    domainError === 'titleEmpty'
+      ? t('validation.titleRequired')
+      : domainError === 'titleTooLong'
+        ? t('validation.titleTooLong')
+        : domainError === 'empty'
+          ? t('validation.bodyRequired')
+          : domainError === 'tooLong'
+            ? t('validation.bodyTooLong')
+            : domainError === 'invalidUnlockAt'
+              ? t('validation.invalidUnlockAt')
+              : null;
 
   async function handleSave() {
-    if (!bodyValid || !unlockInFuture) {
+    if (!titleValid || !bodyValid || !unlockInFuture) {
       setDomainError(
-        !unlockInFuture
-          ? 'invalidUnlockAt'
-          : bodyResult.ok
-            ? null
-            : bodyResult.error,
+        !titleValid
+          ? titleResult.error
+          : !bodyValid
+            ? bodyResult.error
+            : 'invalidUnlockAt',
       );
       return;
     }
@@ -164,17 +186,18 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
     setSaving(true);
     try {
       const result = await messageRepository.create({
+        title: trimmedTitle,
         body: trimmed,
-        unlockAt: unlockISO,
+        unlockAt: unlockISO!,
       });
       if (result.ok) {
         navigation.goBack();
         return;
       }
       setDomainError(result.error);
-      setPersistError('ذخیره پیام با خطا مواجه شد');
+      setPersistError(t('create.saveFailed'));
     } catch {
-      setPersistError('ذخیره پیام با خطا مواجه شد');
+      setPersistError(t('create.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -193,24 +216,74 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
           weight="bold"
           color={theme.colors.primaryText}
           style={styles.title}>
-          پیام تو
+          {t('screenCreate')}
         </Typography>
         <Typography
           size="sm"
           color={theme.colors.secondaryText}
           style={styles.hint}>
-          بنویس، بعداً برای خودت باز کن
+          {t('create.subtitle')}
         </Typography>
 
         <Card style={styles.card}>
+          <Typography
+            size="sm"
+            weight="semibold"
+            color={theme.colors.primaryText}
+            style={styles.sectionLabel}>
+            {t('create.titleLabel')}
+          </Typography>
+          <TextField
+            value={title}
+            onChangeText={text => {
+              setTitle(text);
+              if (domainError === 'titleEmpty' || domainError === 'titleTooLong') {
+                setDomainError(null);
+              }
+            }}
+            placeholder={t('create.titlePlaceholder')}
+            maxLength={MAX_TITLE_LENGTH}
+            accessibilityLabel={t('create.titleLabel')}
+            error={
+              domainError === 'titleEmpty' || domainError === 'titleTooLong'
+                ? domainErrorMessage ?? undefined
+                : undefined
+            }
+          />
+
+          <Typography
+            size="sm"
+            weight="semibold"
+            color={theme.colors.primaryText}
+            style={styles.bodyLabel}>
+            {t('create.bodyLabel')}
+          </Typography>
           <TextField
             value={body}
-            onChangeText={setBody}
-            placeholder="اینجا بنویس..."
+            onChangeText={text => {
+              setBody(text);
+              if (domainError === 'empty' || domainError === 'tooLong') {
+                setDomainError(null);
+              }
+            }}
+            placeholder={t('create.bodyPlaceholder')}
             multiline
             maxLength={MAX_BODY_LENGTH}
-            error={domainErrorMessage ?? persistError ?? undefined}
+            accessibilityLabel={t('create.bodyLabel')}
+            error={
+              domainError === 'empty' || domainError === 'tooLong'
+                ? domainErrorMessage ?? undefined
+                : undefined
+            }
           />
+          {persistError != null && (
+            <Typography
+              size="xs"
+              color={theme.colors.error}
+              style={styles.persistError}>
+              {persistError}
+            </Typography>
+          )}
         </Card>
 
         <Card style={styles.card}>
@@ -219,11 +292,11 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
             weight="semibold"
             color={theme.colors.primaryText}
             style={styles.sectionLabel}>
-            زمان باز شدن
+            {t('create.unlockSection')}
           </Typography>
 
           <View style={styles.chipRow}>
-            {QUICK_OPTIONS.map(o => (
+            {QUICK_KEYS.map(o => (
               <Pressable
                 key={o.key}
                 onPress={() => applyQuick(o.key)}
@@ -233,7 +306,7 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
                 ]}
                 accessibilityRole="button">
                 <Typography size="xs" color={theme.colors.primaryText}>
-                  {o.label}
+                  {t(o.tkey)}
                 </Typography>
               </Pressable>
             ))}
@@ -245,7 +318,7 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
           />
 
           <View style={styles.chipRow}>
-            {HOUR_OPTIONS.map(o => (
+            {HOURS.map(o => (
               <Pressable
                 key={o.hour}
                 onPress={() => setSelectedHour(o.hour)}
@@ -260,8 +333,12 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
                 accessibilityRole="button">
                 <Typography
                   size="xs"
-                  color={selectedHour === o.hour ? theme.colors.white : theme.colors.primaryText}>
-                  {o.label}
+                  color={
+                    selectedHour === o.hour
+                      ? theme.colors.onPrimary
+                      : theme.colors.primaryText
+                  }>
+                  {t(o.key)}
                 </Typography>
               </Pressable>
             ))}
@@ -277,9 +354,9 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
                 decDisabled(5) && styles.chipDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="کم کردن ۵ دقیقه">
+              accessibilityLabel={t('minutes.decreaseFive')}>
               <Typography size="sm" color={theme.colors.primaryText}>
-                {'−۵'}
+                {toPersianDigits('−5')}
               </Typography>
             </Pressable>
             <Pressable
@@ -291,9 +368,9 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
                 decDisabled(1) && styles.chipDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="کم کردن ۱ دقیقه">
+              accessibilityLabel={t('minutes.decreaseOne')}>
               <Typography size="sm" color={theme.colors.primaryText}>
-                {'−۱'}
+                {toPersianDigits('−1')}
               </Typography>
             </Pressable>
             <View style={styles.minuteValue}>
@@ -310,9 +387,9 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
                 incDisabled(1) && styles.chipDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="افزودن ۱ دقیقه">
+              accessibilityLabel={t('minutes.increaseOne')}>
               <Typography size="sm" color={theme.colors.primaryText}>
-                {'+۱'}
+                {toPersianDigits('+1')}
               </Typography>
             </Pressable>
             <Pressable
@@ -324,33 +401,33 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
                 incDisabled(5) && styles.chipDisabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="افزودن ۵ دقیقه">
+              accessibilityLabel={t('minutes.increaseFive')}>
               <Typography size="sm" color={theme.colors.primaryText}>
-                {'+۵'}
+                {toPersianDigits('+5')}
               </Typography>
             </Pressable>
           </View>
 
           {unlockPreview != null && unlockInFuture && (
             <Typography size="sm" color={theme.colors.secondaryText} style={styles.preview}>
-              باز می‌شود: {unlockPreview}
+              {t('create.unlocksPreview', {date: unlockPreview})}
             </Typography>
           )}
           {unlockISO != null && !unlockInFuture && (
             <Typography size="sm" color={theme.colors.error} style={styles.preview}>
-              زمان باز شدن باید در آینده باشد
+              {t('create.pastWarning')}
             </Typography>
           )}
         </Card>
 
         <View style={styles.footer}>
           <Button
-            label="ذخیره پیام"
+            label={t('create.save')}
             onPress={handleSave}
-            disabled={!bodyValid || !unlockInFuture || saving}
+            disabled={!titleValid || !bodyValid || !unlockInFuture || saving}
           />
           <Button
-            label="انصراف"
+            label={t('actions.cancel')}
             variant="ghost"
             onPress={() => navigation.goBack()}
             style={styles.cancel}
@@ -368,12 +445,14 @@ const styles = StyleSheet.create({
   title: {marginBottom: 4},
   hint: {marginBottom: 16},
   card: {marginBottom: 12},
-  sectionLabel: {marginBottom: 12},
-  chipRow: {flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: 12, gap: 8},
+  sectionLabel: {marginBottom: 8},
+  bodyLabel: {marginTop: 16, marginBottom: 8},
+  persistError: {marginTop: 8},
+  chipRow: {flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 8},
   chip: {borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8},
   chipDisabled: {opacity: 0.35},
   minuteRow: {
-    flexDirection: 'row-reverse',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,

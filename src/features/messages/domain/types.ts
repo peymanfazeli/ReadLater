@@ -4,14 +4,17 @@ export type MessageStatus = 'locked' | 'unlocked';
 // present here; it must never cross into list/reveal boundaries while locked.
 export type StoredMessage = {
   id: string;
+  title: string;
   body: string;
   createdAt: string;
   unlockAt: string;
 };
 
-// Public view of a message. Locked messages never carry a body.
+// Public view of a message. Locked messages never carry a body, but the title
+// is safe metadata and may be displayed in lists and previews.
 export type Message = {
   id: string;
+  title: string;
   body: string | null;
   createdAt: string;
   unlockAt: string;
@@ -33,6 +36,7 @@ export function toView(
   const status = deriveStatus(stored.unlockAt, now);
   return {
     id: stored.id,
+    title: stored.title,
     body: status === 'unlocked' ? stored.body : null,
     createdAt: stored.createdAt,
     unlockAt: stored.unlockAt,

@@ -1,14 +1,25 @@
 import {createId} from '../domain/id';
-import {sanitizeStoredRecord, validateBody, validateUnlockAt} from '../domain/rules';
+import {
+  sanitizeStoredRecord,
+  validateBody,
+  validateTitle,
+  validateUnlockAt,
+} from '../domain/rules';
 import {toView, type Message, type StoredMessage} from '../domain/types';
 import type {MessageStorage} from '../../../services/storage/types';
 
 export type CreateMessageInput = {
+  title: string;
   body: string;
   unlockAt: string;
 };
 
-export type CreateMessageError = 'empty' | 'tooLong' | 'invalidUnlockAt';
+export type CreateMessageError =
+  | 'titleEmpty'
+  | 'titleTooLong'
+  | 'empty'
+  | 'tooLong'
+  | 'invalidUnlockAt';
 
 export type CreateMessageResult =
   | {ok: true; message: Message}
@@ -53,6 +64,10 @@ export class MessageRepository {
   async create(
     input: CreateMessageInput,
   ): Promise<CreateMessageResult> {
+    const title = validateTitle(input.title);
+    if (!title.ok) {
+      return {ok: false, error: title.error};
+    }
     const body = validateBody(input.body);
     if (!body.ok) {
       return {ok: false, error: body.error};
@@ -63,6 +78,7 @@ export class MessageRepository {
     }
     const record: StoredMessage = {
       id: createId(),
+      title: title.value,
       body: body.value,
       createdAt: clock.toISOString(),
       unlockAt: input.unlockAt,

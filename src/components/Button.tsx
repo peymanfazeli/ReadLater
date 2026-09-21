@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   ViewStyle,
 } from 'react-native';
-import {useTheme} from '../app/providers/ThemeProvider';
+import {useTheme} from '../app/providers/SettingsProvider';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -48,7 +48,7 @@ export function Button({
 
   const textStyle = [
     styles.label,
-    variant === 'primary' && {color: theme.colors.white},
+    variant === 'primary' && {color: theme.colors.onPrimary},
     variant === 'secondary' && {color: theme.colors.primaryText},
     variant === 'ghost' && {color: theme.colors.primaryDark},
   ];
@@ -61,7 +61,11 @@ export function Button({
       activeOpacity={0.7}>
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? theme.colors.white : theme.colors.primary}
+          color={
+            variant === 'primary'
+              ? theme.colors.onPrimary
+              : theme.colors.primary
+          }
           size="small"
         />
       ) : (

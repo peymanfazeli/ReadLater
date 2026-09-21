@@ -14,16 +14,18 @@ import {Button} from '../../../components/Button';
 import {Card} from '../../../components/Card';
 import {AttentionDot} from '../../../components/AttentionDot';
 import {MessageCard} from '../components/MessageCard';
-import {useTheme} from '../../../app/providers/ThemeProvider';
+import {
+  useTheme,
+  useTranslation,
+} from '../../../app/providers/SettingsProvider';
 import {useMessageList} from '../hooks/useMessages';
 import {useNotificationAttention} from '../../../app/providers/NotificationAttentionProvider';
-import {
-  reconcile,
-} from '../../../services/notifications/NotificationService';
+import {reconcile} from '../../../services/notifications/NotificationService';
 import type {HomeScreenProps} from '../../../app/navigation/types';
 
 export function HomeScreen({navigation}: HomeScreenProps) {
   const theme = useTheme();
+  const {t} = useTranslation();
   const {state, reload} = useMessageList();
   const {attention} = useNotificationAttention();
 
@@ -31,10 +33,13 @@ export function HomeScreen({navigation}: HomeScreenProps) {
     React.useCallback(() => {
       (async () => {
         if (state.status === 'ready') {
-          await reconcile(state.data.messages);
+          await reconcile(state.data.messages, {
+            title: t('notification.title'),
+            body: t('notification.body'),
+          });
         }
       })();
-    }, [state]),
+    }, [state, t]),
   );
 
   return (
@@ -55,7 +60,7 @@ export function HomeScreen({navigation}: HomeScreenProps) {
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="باز کردن منو"
+                accessibilityLabel={t('home.menuLabel')}
                 onPress={() => navigation.openDrawer()}>
                 <Typography
                   size="xl"
@@ -68,13 +73,13 @@ export function HomeScreen({navigation}: HomeScreenProps) {
             </View>
           </View>
           <Typography size="xxxl" weight="bold" color={theme.colors.primaryText}>
-            بعدابخون
+            {t('appName')}
           </Typography>
           <Typography
             size="md"
             color={theme.colors.secondaryText}
             style={styles.subtitle}>
-            پیامی برای خودت بنویس، آینده بازش کن
+            {t('home.subtitle')}
           </Typography>
         </View>
 
@@ -92,16 +97,16 @@ export function HomeScreen({navigation}: HomeScreenProps) {
                 weight="medium"
                 color={theme.colors.primaryText}
                 align="center">
-                خطایی پیش آمد
+                {t('errors.generic')}
               </Typography>
               <Typography
                 size="sm"
                 color={theme.colors.secondaryText}
                 align="center"
                 style={styles.hint}>
-                بارگیری پیام‌ها با مشکل مواجه شد
+                {t('home.listError')}
               </Typography>
-              <Button label="تلاش دوباره" onPress={reload} style={styles.hint} />
+              <Button label={t('actions.retry')} onPress={reload} style={styles.hint} />
             </Card>
           </View>
         )}
@@ -109,34 +114,15 @@ export function HomeScreen({navigation}: HomeScreenProps) {
         {state.status === 'ready' && (
           <>
             {(state.data.corrupt || state.data.dropped > 0) && (
-              <Card style={{...styles.notice, borderColor: theme.colors.error}}>
+              <Card style={[styles.notice, {borderColor: theme.colors.error}]}>
                 <Typography
                   size="xs"
                   color={theme.colors.secondaryText}
                   align="center">
-                  برخی پیام‌ها قابل خواندن نبودند و حذف شدند
+                  {t('home.corruptNotice')}
                 </Typography>
               </Card>
             )}
-
-            {/* {!notifAuthorized && (
-              <Card style={styles.notice}>
-                <Typography
-                  size="xs"
-                  color={theme.colors.secondaryText}
-                  align="center">
-                  برای آگاه شدن از باز شدن پیام‌ها، اعلان‌ها را فعال کن
-                </Typography>
-                <Button
-                  label="فعال کردن اعلان‌ها"
-                  variant="secondary"
-                  onPress={enableNotifications}
-                  disabled={permissionBusy}
-                  loading={permissionBusy}
-                  style={styles.notifAction}
-                />
-              </Card>
-            )} */}
 
             {state.data.messages.length === 0 ? (
               <View style={styles.empty}>
@@ -146,14 +132,14 @@ export function HomeScreen({navigation}: HomeScreenProps) {
                     weight="medium"
                     color={theme.colors.secondaryText}
                     align="center">
-                    هنوز پیامی نداری
+                    {t('home.emptyTitle')}
                   </Typography>
                   <Typography
                     size="sm"
                     color={theme.colors.secondaryText}
                     align="center"
                     style={styles.emptyHint}>
-                    اولین پیامت رو برای خودت بنویس
+                    {t('home.emptyHint')}
                   </Typography>
                 </Card>
               </View>
@@ -185,7 +171,7 @@ export function HomeScreen({navigation}: HomeScreenProps) {
 
         <View style={styles.footer}>
           <Button
-            label="پیام جدید بنویس"
+            label={t('home.newMessage')}
             onPress={() => navigation.navigate('CreateMessage')}
           />
         </View>
@@ -255,10 +241,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     alignItems: 'center',
-  },
-  notifAction: {
-    marginTop: 8,
-    alignSelf: 'stretch',
   },
   list: {
     paddingBottom: 16,

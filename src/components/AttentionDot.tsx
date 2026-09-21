@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, Easing, StyleSheet, ViewStyle} from 'react-native';
-import {useTheme} from '../app/providers/ThemeProvider';
+import {useTheme} from '../app/providers/SettingsProvider';
+import {useTranslation} from '../app/providers/SettingsProvider';
 
 type Props = {
   active: boolean;
@@ -13,6 +14,7 @@ type Props = {
 // inactive fades it out (the indicator is "wiped away").
 export function AttentionDot({active, size = 12, style}: Props) {
   const theme = useTheme();
+  const {t} = useTranslation();
   const shake = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(active ? 1 : 0)).current;
 
@@ -75,7 +77,7 @@ export function AttentionDot({active, size = 12, style}: Props) {
       pointerEvents="none"
       accessibilityElementsHidden={!active}
       importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}
-      accessibilityLabel="اعلان‌ها فعال نیست"
+      accessibilityLabel={t('attention.notEnabled')}
       style={[
         styles.dot,
         {

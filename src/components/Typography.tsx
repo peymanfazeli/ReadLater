@@ -1,6 +1,6 @@
 import React from 'react';
-import {Text as RNText, TextProps, StyleSheet} from 'react-native';
-import {useTheme} from '../app/providers/ThemeProvider';
+import {Text as RNText, TextProps} from 'react-native';
+import {useTheme} from '../app/providers/SettingsProvider';
 import type {TypographySize, TypographyWeight} from '../theme/typography';
 
 type Props = TextProps & {
@@ -24,7 +24,6 @@ export function Typography({
   return (
     <RNText
       style={[
-        styles.base,
         {
           fontSize: theme.typography.sizes[size],
           fontWeight: theme.typography.weights[weight],
@@ -39,9 +38,3 @@ export function Typography({
     </RNText>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    writingDirection: 'rtl',
-  },
-});

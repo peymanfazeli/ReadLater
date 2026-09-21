@@ -1,10 +1,10 @@
 import React from 'react';
-import {View, StyleSheet, ViewStyle} from 'react-native';
-import {useTheme} from '../app/providers/ThemeProvider';
+import {View, StyleSheet, ViewStyle, StyleProp} from 'react-native';
+import {useTheme} from '../app/providers/SettingsProvider';
 
 type Props = {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   padding?: boolean;
 };
 

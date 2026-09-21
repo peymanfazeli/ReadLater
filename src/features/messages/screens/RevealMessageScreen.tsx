@@ -6,11 +6,12 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Typography} from '../../../components/Typography';
 import {Button} from '../../../components/Button';
 import {Card} from '../../../components/Card';
-import {useTheme} from '../../../app/providers/ThemeProvider';
+import {useTheme, useTranslation} from '../../../app/providers/SettingsProvider';
 import {formatDate} from '../domain/rules';
 import {messageRepository} from '../data';
 import {useMessage} from '../hooks/useMessages';
@@ -23,14 +24,24 @@ export function RevealMessageScreen({
 }: RevealMessageScreenProps) {
   const {messageId} = route.params;
   const theme = useTheme();
+  const {t, language} = useTranslation();
   const {state, reload} = useMessage(messageId);
   const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  async function confirmDelete() {
-    Alert.alert('حذف پیام', 'این پیام برای همیشه حذف می‌شود. مطمئنی؟', [
-      {text: 'انصراف', style: 'cancel'},
+  async function handleCopy() {
+    if (state.status !== 'ready' || state.data === null || state.data.body === null) {
+      return;
+    }
+    await Clipboard.setString(state.data.body);
+    setCopied(true);
+  }
+
+  function confirmDelete() {
+    Alert.alert(t('reveal.deleteConfirmTitle'), t('reveal.deleteConfirmBody'), [
+      {text: t('actions.cancel'), style: 'cancel'},
       {
-        text: 'حذف',
+        text: t('actions.delete'),
         style: 'destructive',
         onPress: async () => {
           setDeleting(true);
@@ -55,7 +66,7 @@ export function RevealMessageScreen({
         contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Typography size="xl" weight="bold" color={theme.colors.primaryText}>
-            پیام تو
+            {t('screenReveal')}
           </Typography>
         </View>
 
@@ -73,16 +84,16 @@ export function RevealMessageScreen({
                 weight="medium"
                 color={theme.colors.primaryText}
                 align="center">
-                خطایی پیش آمد
+                {t('errors.generic')}
               </Typography>
               <Typography
                 size="sm"
                 color={theme.colors.secondaryText}
                 align="center"
                 style={styles.gap}>
-                بارگیری پیام با مشکل مواجه شد
+                {t('reveal.loadError')}
               </Typography>
-              <Button label="تلاش دوباره" onPress={reload} />
+              <Button label={t('actions.retry')} onPress={reload} />
             </Card>
           </View>
         )}
@@ -95,10 +106,10 @@ export function RevealMessageScreen({
                 weight="medium"
                 color={theme.colors.secondaryText}
                 align="center">
-                پیام پیدا نشد
+                {t('reveal.notFound')}
               </Typography>
               <Button
-                label="بازگشت به خانه"
+                label={t('actions.backHome')}
                 variant="ghost"
                 onPress={() => navigation.popToTop()}
                 style={styles.gap}
@@ -109,8 +120,14 @@ export function RevealMessageScreen({
 
         {state.status === 'ready' && state.data !== null && (
           <>
-            {state.data.status === 'locked' ? (
-              <Card style={styles.card}>
+            <Card style={styles.card}>
+              <Typography
+                size="lg"
+                weight="bold"
+                color={theme.colors.primaryText}>
+                {state.data.title}
+              </Typography>
+              {state.data.status === 'locked' ? (
                 <View style={styles.lockedContainer}>
                   <Typography size="lg">🔒</Typography>
                   <Typography
@@ -118,46 +135,62 @@ export function RevealMessageScreen({
                     weight="medium"
                     color={theme.colors.primaryText}
                     style={styles.lockedLabel}>
-                    این پیام هنوز قفل است
+                    {t('reveal.lockedLabel')}
                   </Typography>
                   <Typography size="sm" color={theme.colors.secondaryText}>
-                    باز می‌شود: {formatDate(state.data.unlockAt)}
+                    {t('reveal.unlocksAt', {
+                      date: formatDate(state.data.unlockAt, language),
+                    })}
                   </Typography>
                 </View>
-              </Card>
-            ) : (
-              <Card style={styles.card}>
-                <Typography
-                  size="md"
-                  color={theme.colors.primaryText}>
+              ) : (
+                <Typography size="md" color={theme.colors.primaryText} style={styles.body}>
                   {state.data.body}
                 </Typography>
-              </Card>
+              )}
+            </Card>
+
+            {state.data.status === 'unlocked' && copied && (
+              <Typography size="sm" color={theme.colors.successText} style={styles.copied}>
+                {t('reveal.copied')}
+              </Typography>
+            )}
+            {state.data.status === 'unlocked' && (
+              <Button
+                label={t('reveal.copy')}
+                variant="secondary"
+                onPress={handleCopy}
+                style={styles.copy}
+              />
             )}
 
             <View style={styles.dates}>
               <Typography size="sm" color={theme.colors.secondaryText}>
-                نوشته شده: {formatDate(state.data.createdAt)}
+                {t('reveal.createdOn', {
+                  date: formatDate(state.data.createdAt, language),
+                })}
               </Typography>
               {state.data.status === 'unlocked' && (
                 <Typography
                   size="sm"
                   color={theme.colors.successText}
                   style={styles.unlockDate}>
-                  باز شده: {formatDate(state.data.unlockAt)}
+                  {t('reveal.unlockedOn', {
+                    date: formatDate(state.data.unlockAt, language),
+                  })}
                 </Typography>
               )}
             </View>
 
             <View style={styles.footer}>
               <Button
-                label="حذف پیام"
+                label={t('reveal.delete')}
                 variant="ghost"
                 onPress={confirmDelete}
                 disabled={deleting}
               />
               <Button
-                label="بازگشت به خانه"
+                label={t('actions.backHome')}
                 variant="ghost"
                 onPress={() => navigation.popToTop()}
                 style={styles.home}
@@ -194,11 +227,9 @@ const styles = StyleSheet.create({
   gap: {
     marginTop: 12,
   },
-  dates: {
-    marginBottom: 24,
-  },
-  unlockDate: {
-    marginTop: 4,
+  body: {
+    marginTop: 12,
+    lineHeight: 26,
   },
   lockedContainer: {
     alignItems: 'center',
@@ -206,6 +237,20 @@ const styles = StyleSheet.create({
   },
   lockedLabel: {
     marginTop: 8,
+  },
+  copy: {
+    marginTop: 0,
+    marginBottom: 16,
+  },
+  copied: {
+    marginBottom: 8,
+  },
+  dates: {
+    marginBottom: 24,
+    marginTop: 4,
+  },
+  unlockDate: {
+    marginTop: 4,
   },
   footer: {
     marginTop: 'auto',
