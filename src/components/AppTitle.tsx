@@ -3,7 +3,7 @@ import {StyleSheet} from 'react-native';
 import {Typography} from './Typography';
 import {useTheme, useTranslation} from '../app/providers/SettingsProvider';
 
-// Home-screen app title: champagne (dark) / lavender (light) glow, with a
+// Home-screen app title: warm accent (light) / champagne (dark) glow, with a
 // larger RTL treatment in Lalezar (bundled at
 // android/app/src/main/assets/fonts/Lalezar.ttf, OFL) for Persian and a
 // tracked semibold one in the theme font for English.

@@ -81,17 +81,17 @@ The theme system must be token-based and consistently applied across the entire 
 
 ### Light Theme Palette
 
-- background: `#FAF6EF`
-- surface: `#FFFFFF`
-- primary text: `#25283A`
-- secondary text: `#8D887F`
-- primary: `#B9A2FF`
-- primary dark: `#6550A4`
-- success surface: `#D5EBDD`
-- success text: `#477C5A`
-- peach: `#F4D1C2`
-- border: `#EAE4DB`
-- glow: `rgba(185, 162, 255, 0.6)` (title text halo)
+- background: `#F5EFE6`
+- surface: `#FFFDF9`
+- primary text: `#2C221E`
+- secondary text: `#82756A`
+- primary: `#D4A373`
+- primary dark: `#8C5830`
+- success surface: `#E2ECDF`
+- success text: `#3D6348`
+- peach: `#E8C2B5`
+- border: `#D8CDBF`
+- glow: `rgba(212, 163, 115, 0.45)` (title text halo)
 
 ### Dark Theme Palette
 

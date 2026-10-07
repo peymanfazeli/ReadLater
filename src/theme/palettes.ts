@@ -23,22 +23,22 @@ export type ColorToken =
 
 // DESIGN.md palette (light).
 export const light: Record<ColorToken, string> = {
-  background: '#FAF6EF',
-  surface: '#FFFFFF',
-  primaryText: '#25283A',
-  secondaryText: '#8D887F',
-  primary: '#B9A2FF',
-  primaryDark: '#6550A4',
-  onPrimary: '#241A49',
-  glow: 'rgba(185, 162, 255, 0.6)',
-  successSurface: '#D5EBDD',
-  successText: '#477C5A',
-  peach: '#F4D1C2',
-  border: '#EAE4DB',
+  background: '#F5EFE6',
+  surface: '#FFFDF9',
+  primaryText: '#2C221E',
+  secondaryText: '#82756A',
+  primary: '#D4A373',
+  primaryDark: '#8C5830',
+  onPrimary: '#FFFFFF',
+  glow: 'rgba(212, 163, 115, 0.45)',
+  successSurface: '#E2ECDF',
+  successText: '#3D6348',
+  peach: '#E8C2B5',
+  border: '#D8CDBF',
   white: '#FFFFFF',
   black: '#000000',
-  error: '#D32F2F',
-  errorSurface: '#FDECEA',
+  error: '#B83A3A',
+  errorSurface: '#FADBD8',
 };
 
 // Dark palette ("Deep Midnight Indigo" + champagne accent), hand-picked for

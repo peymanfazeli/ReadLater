@@ -6,8 +6,22 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
+  Image,
+  TouchableOpacity,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import {Typography} from '../../../components/Typography';
 import {AppTitle} from '../../../components/AppTitle';
 import {Button} from '../../../components/Button';
@@ -26,8 +40,44 @@ import type {HomeScreenProps} from '../../../app/navigation/types';
 export function HomeScreen({navigation}: HomeScreenProps) {
   const theme = useTheme();
   const {t} = useTranslation();
+  const insets = useSafeAreaInsets();
   const {state, reload, refresh} = useMessageList();
   const {attention} = useNotificationAttention();
+
+  // FAB press: sinks down while held, springs back up on release.
+  const fabPress = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
+  const fabStyle = useAnimatedStyle(() => ({
+    transform: [
+      {translateY: fabPress.value * 4},
+      {scale: 1 - fabPress.value * 0.1},
+    ],
+  }));
+
+  // Pen icon heartbeat: lub-dub double thump, then a beat of rest.
+  const heartbeat = useSharedValue(1);
+  const heartbeatStyle = useAnimatedStyle(() => ({
+    transform: [{scale: heartbeat.value}],
+  }));
+  React.useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
+    heartbeat.value = withRepeat(
+      withSequence(
+        withTiming(1.14, {duration: 150, easing: Easing.out(Easing.quad)}),
+        withTiming(0.96, {duration: 140, easing: Easing.inOut(Easing.quad)}),
+        withTiming(1.08, {duration: 140, easing: Easing.out(Easing.quad)}),
+        withTiming(1, {duration: 170, easing: Easing.inOut(Easing.quad)}),
+        withDelay(750, withTiming(1, {duration: 1})),
+      ),
+      -1,
+    );
+    return () => {
+      cancelAnimation(heartbeat);
+      heartbeat.value = 1;
+    };
+  }, [reduceMotion, heartbeat]);
 
   // Unlocks while Home is open flip live (JS timers); unlocks outside the
   // app are notified by the native alarms this hook arms when backgrounding.
@@ -161,12 +211,43 @@ export function HomeScreen({navigation}: HomeScreenProps) {
           </>
         )}
 
-        <View style={styles.footer}>
-          <Button
-            label={t('home.newMessage')}
-            onPress={() => navigation.navigate('CreateMessage')}
-          />
-        </View>
+        <TouchableOpacity
+          style={[styles.fab, {bottom: 20 + insets.bottom}]}
+          onPress={() => navigation.navigate('CreateMessage')}
+          onPressIn={() => {
+            if (!reduceMotion) {
+              fabPress.value = withTiming(1, {
+                duration: 130,
+                easing: Easing.out(Easing.quad),
+              });
+            }
+          }}
+          onPressOut={() => {
+            if (!reduceMotion) {
+              fabPress.value = withSpring(0, {
+                damping: 13,
+                stiffness: 240,
+                mass: 0.6,
+              });
+            }
+          }}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={t('home.newMessage')}>
+          <Animated.View style={[styles.fabClip, fabStyle]}>
+            <Image
+              source={require('../../../assets/button-add.png')}
+              style={styles.fabBackground}
+              resizeMode="cover"
+            />
+            <Animated.Image
+              source={require('../../../assets/pen-and-paper.png')}
+              style={[styles.fabIcon, heartbeatStyle]}
+              resizeMode="contain"
+              importantForAccessibility="no"
+            />
+          </Animated.View>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -235,12 +316,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   list: {
-    paddingBottom: 16,
+    paddingBottom: 112,
   },
   hint: {
     marginTop: 8,
   },
-  footer: {
-    paddingVertical: 16,
+  fab: {
+    position: 'absolute',
+    alignSelf: 'center',
+    width: 78,
+    height: 78,
+  },
+  fabClip: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 39,
+    overflow: 'hidden',
+  },
+  fabBackground: {
+    width: '100%',
+    height: '100%',
+  },
+  fabIcon: {
+    position: 'absolute',
+    top: 16,
+    left: 21,
+    width: 36,
+    height: 36,
   },
 });
