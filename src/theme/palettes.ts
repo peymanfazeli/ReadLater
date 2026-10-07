@@ -11,6 +11,7 @@ export type ColorToken =
   | 'primary'
   | 'primaryDark'
   | 'onPrimary'
+  | 'glow'
   | 'successSurface'
   | 'successText'
   | 'peach'
@@ -29,6 +30,7 @@ export const light: Record<ColorToken, string> = {
   primary: '#B9A2FF',
   primaryDark: '#6550A4',
   onPrimary: '#241A49',
+  glow: 'rgba(185, 162, 255, 0.6)',
   successSurface: '#D5EBDD',
   successText: '#477C5A',
   peach: '#F4D1C2',
@@ -54,6 +56,7 @@ export const dark: Record<ColorToken, string> = {
   primary: '#E0A96D',
   primaryDark: '#C4894E',
   onPrimary: '#2A2117',
+  glow: 'rgba(224, 169, 109, 0.6)',
   successSurface: '#1E3628',
   successText: '#86D7A4',
   peach: '#4A3A2A',

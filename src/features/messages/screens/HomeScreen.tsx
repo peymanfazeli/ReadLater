@@ -10,6 +10,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {Typography} from '../../../components/Typography';
+import {AppTitle} from '../../../components/AppTitle';
 import {Button} from '../../../components/Button';
 import {Card} from '../../../components/Card';
 import {AttentionDot} from '../../../components/AttentionDot';
@@ -72,9 +73,7 @@ export function HomeScreen({navigation}: HomeScreenProps) {
               <AttentionDot active={attention} style={styles.menuDot} />
             </View>
           </View>
-          <Typography size="xxxl" weight="bold" color={theme.colors.primaryText}>
-            {t('appName')}
-          </Typography>
+          <AppTitle />
           <Typography
             size="md"
             color={theme.colors.secondaryText}

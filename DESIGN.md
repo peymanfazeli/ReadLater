@@ -91,6 +91,7 @@ The theme system must be token-based and consistently applied across the entire 
 - success text: `#477C5A`
 - peach: `#F4D1C2`
 - border: `#EAE4DB`
+- glow: `rgba(185, 162, 255, 0.6)` (title text halo)
 
 ### Dark Theme Palette
 
@@ -107,6 +108,7 @@ Dreamy, reflective, safe, poetic — a quiet, velvety night-sky feel with a prec
 - success text: `#86D7A4`
 - peach: `#4A3A2A`
 - border: `#2C3140`
+- glow: `rgba(224, 169, 109, 0.6)` (title text halo)
 
 The existing brand identity must remain recognizable in both themes.
 
