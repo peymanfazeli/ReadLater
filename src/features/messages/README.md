@@ -24,7 +24,16 @@ unlock time, and reveal it after.
   storage adapter and clock for tests.
 - `messageRepository` singleton (`data/index.ts`) — wired to AsyncStorage.
 - `useMessageList` / `useMessage` (`hooks/useMessages.ts`) — screen state
-  (loading/ready/error) with reload.
+  (loading/ready/error) with `reload` (shows the loading state) and
+  `refresh` (silent refetch that swaps data in place — used for unlock flips
+  so no spinner flashes over the content).
+- `useUnlockWatch` (`hooks/useUnlockWatch.ts`) — unlock-moment policy for
+  Home and Reveal: foreground/'inactive' → cancels every pending native
+  alarm and arms JS timers that `refresh()` at each `unlockAt` (live
+  locked → unlocked flip, no notification); background → drops timers and
+  runs `reconcile()` so the notification fires outside the app. Watches
+  AppState changes and message-list identity; handles >24-day waits by
+  chunking timers.
 - `HomeScreen`, `CreateMessageScreen`, `RevealMessageScreen` — screens.
 - `MessageCard` — list item with a three-state icon: locked →
   `src/assets/icon-locked-msg.png`, unlocked-but-unread →
@@ -66,6 +75,10 @@ unlock time, and reveal it after.
   pick the sealed-vs-read icon. Idempotent at the repository.
 - The Home list reloads on every screen focus, so created/deleted messages
   reflect immediately.
+- Unlock timing: `useUnlockWatch` decides between an in-app live flip (app
+  open → status changes at `unlockAt` via silent refresh, no notification) and
+  a native notification (app away → alarm armed on background). `scheduleUnlock`
+  independently refuses to arm while the app is active as a race guard.
 - Corrupt storage (unparsable JSON) and structurally-invalid/duplicate
   records are surfaced by getting dropped, without crushing existing data —
   `list` reports `corrupt`/`dropped` so the UI can warn.

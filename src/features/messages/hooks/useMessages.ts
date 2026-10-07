@@ -11,12 +11,20 @@ export type MessageListState =
 // `load` is shared between the focus effect (refetch on navigation back) and
 // the manual retry button, so the list never shows stale data. Invoked as an
 // effect it returns the cancellation cleanup; invoked directly it is ignored.
-export function useMessageList(): {state: MessageListState; reload: () => void} {
+// `silent` skips the loading state so an unlock flip can swap locked →
+// unlocked in place without flashing the spinner over the list.
+export function useMessageList(): {
+  state: MessageListState;
+  reload: () => void;
+  refresh: () => void;
+} {
   const [state, setState] = useState<MessageListState>({status: 'loading'});
 
-  const load = useCallback(() => {
+  const load = useCallback((silent = false) => {
     let cancelled = false;
-    setState({status: 'loading'});
+    if (!silent) {
+      setState({status: 'loading'});
+    }
     messageRepository
       .list()
       .then(data => {
@@ -36,7 +44,14 @@ export function useMessageList(): {state: MessageListState; reload: () => void} 
 
   useFocusEffect(load);
 
-  return {state, reload: load};
+  const reload = useCallback(() => {
+    load();
+  }, [load]);
+  const refresh = useCallback(() => {
+    load(true);
+  }, [load]);
+
+  return {state, reload, refresh};
 }
 
 export type MessageDetailState =
@@ -47,12 +62,14 @@ export type MessageDetailState =
 
 export function useMessage(
   id: string,
-): {state: MessageDetailState; reload: () => void} {
+): {state: MessageDetailState; reload: () => void; refresh: () => void} {
   const [state, setState] = useState<MessageDetailState>({status: 'loading'});
 
-  const load = useCallback(() => {
+  const load = useCallback((silent = false) => {
     let cancelled = false;
-    setState({status: 'loading'});
+    if (!silent) {
+      setState({status: 'loading'});
+    }
     messageRepository
       .get(id)
       .then(data => {
@@ -72,5 +89,12 @@ export function useMessage(
 
   useEffect(load, [load]);
 
-  return {state, reload: load};
+  const reload = useCallback(() => {
+    load();
+  }, [load]);
+  const refresh = useCallback(() => {
+    load(true);
+  }, [load]);
+
+  return {state, reload, refresh};
 }

@@ -1,8 +1,11 @@
-import notifee, {TriggerType} from 'react-native-notify-kit';
+import {AppState} from 'react-native';
+import notifee, {EventType, TriggerType} from 'react-native-notify-kit';
 import {
   scheduleUnlock,
   cancelUnlock,
+  cancelAllUnlocks,
   reconcile,
+  onUnlockPress,
   permissionAuthorized,
   requestPermission,
   getInitialMessageId,
@@ -41,6 +44,17 @@ describe('scheduleUnlock', () => {
     expect(notification.data).toEqual({messageId: 'msg-secret'});
     expect(Object.keys(notification.data)).toHaveLength(1);
   });
+
+  test('refuses to arm while the app is in the foreground', async () => {
+    const original = AppState.currentState;
+    AppState.currentState = 'active';
+    try {
+      await scheduleUnlock('msg-fg', new Date('2099-01-01T09:00:00.000Z'));
+      expect(notifee.createTriggerNotification).not.toHaveBeenCalled();
+    } finally {
+      AppState.currentState = original;
+    }
+  });
 });
 
 describe('reconcile', () => {
@@ -78,6 +92,35 @@ describe('cancelUnlock', () => {
   test('cancels the trigger for the message id', async () => {
     await cancelUnlock('msg-1');
     expect(notifee.cancelTriggerNotification).toHaveBeenCalledWith('msg-1');
+  });
+
+  test('cancelAllUnlocks sweeps every pending trigger id', async () => {
+    (notifee.getTriggerNotificationIds as jest.Mock).mockResolvedValue([
+      'a',
+      'b',
+    ]);
+    await cancelAllUnlocks();
+    expect(notifee.cancelTriggerNotification).toHaveBeenCalledWith('a');
+    expect(notifee.cancelTriggerNotification).toHaveBeenCalledWith('b');
+  });
+});
+
+describe('onUnlockPress', () => {
+  test('navigates only on a real press, not on delivery/creation/dismiss', () => {
+    const cb = jest.fn();
+    onUnlockPress(cb);
+    const foreground = (notifee.onForegroundEvent as jest.Mock).mock
+      .calls[0][0];
+    const notification = {id: 'n1', data: {messageId: 'msg-1'}};
+
+    foreground({type: EventType.DELIVERED, detail: {notification}});
+    foreground({type: EventType.TRIGGER_NOTIFICATION_CREATED, detail: {notification}});
+    foreground({type: EventType.DISMISSED, detail: {notification}});
+    expect(cb).not.toHaveBeenCalled();
+
+    foreground({type: EventType.PRESS, detail: {notification}});
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith('msg-1');
   });
 });
 

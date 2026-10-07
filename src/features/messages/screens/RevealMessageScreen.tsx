@@ -25,6 +25,7 @@ import {useTheme, useTranslation} from '../../../app/providers/SettingsProvider'
 import {formatDate} from '../domain/rules';
 import {messageRepository} from '../data';
 import {useMessage} from '../hooks/useMessages';
+import {useUnlockWatch} from '../hooks/useUnlockWatch';
 import {cancelUnlock} from '../../../services/notifications/NotificationService';
 import type {RevealMessageScreenProps} from '../../../app/navigation/types';
 
@@ -37,9 +38,16 @@ export function RevealMessageScreen({
   const {messageId} = route.params;
   const theme = useTheme();
   const {t, language} = useTranslation();
-  const {state, reload} = useMessage(messageId);
+  const {state, reload, refresh} = useMessage(messageId);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Watching a single message: the locked → unlocked flip happens live while
+  // this screen is open, and native alarms are armed/deferred when leaving.
+  useUnlockWatch(
+    state.status === 'ready' && state.data ? [state.data] : undefined,
+    refresh,
+  );
 
   const shakeRotate = useSharedValue(0);
   const shakePop = useSharedValue(1);

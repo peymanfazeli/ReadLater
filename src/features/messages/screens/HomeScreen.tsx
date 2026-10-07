@@ -8,7 +8,6 @@ import {
   Pressable,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useFocusEffect} from '@react-navigation/native';
 import {Typography} from '../../../components/Typography';
 import {AppTitle} from '../../../components/AppTitle';
 import {Button} from '../../../components/Button';
@@ -20,27 +19,21 @@ import {
   useTranslation,
 } from '../../../app/providers/SettingsProvider';
 import {useMessageList} from '../hooks/useMessages';
+import {useUnlockWatch} from '../hooks/useUnlockWatch';
 import {useNotificationAttention} from '../../../app/providers/NotificationAttentionProvider';
-import {reconcile} from '../../../services/notifications/NotificationService';
 import type {HomeScreenProps} from '../../../app/navigation/types';
 
 export function HomeScreen({navigation}: HomeScreenProps) {
   const theme = useTheme();
   const {t} = useTranslation();
-  const {state, reload} = useMessageList();
+  const {state, reload, refresh} = useMessageList();
   const {attention} = useNotificationAttention();
 
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        if (state.status === 'ready') {
-          await reconcile(state.data.messages, {
-            title: t('notification.title'),
-            body: t('notification.body'),
-          });
-        }
-      })();
-    }, [state, t]),
+  // Unlocks while Home is open flip live (JS timers); unlocks outside the
+  // app are notified by the native alarms this hook arms when backgrounding.
+  useUnlockWatch(
+    state.status === 'ready' ? state.data.messages : undefined,
+    refresh,
   );
 
   return (

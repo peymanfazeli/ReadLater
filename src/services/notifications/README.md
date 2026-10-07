@@ -20,24 +20,42 @@ or singleton, so tests exercise the same entry points the screens use.
   a `TIMESTAMP` trigger notification keyed by the message id. `copy` is
   `{title, body}` localized by the caller (screens pass `t()` values); the
   Persian values are the fallback for callers without language context.
+  Refuses to arm while `AppState.currentState === 'active'` — in-app unlocks
+  are handled by `useUnlockWatch`'s live status flip, never by a heads-up.
 - `cancelUnlock(messageId): Promise<void>` — cancels the pending trigger for
   one message.
+- `cancelAllUnlocks(): Promise<void>` — cancels every pending trigger (all
+  app triggers are message unlocks); used by the unlock watch on every
+  foreground sync so strays from before this policy or a racing reconcile
+  can never fire a heads-up in-app.
 - `reconcile(messages: {id, unlockAt}[], copy?): Promise<void>` — schedules any
-  future unlock that has no pending alarm; idempotent, safe to run on every
-  Home focus.
+  future unlock that has no pending alarm; idempotent, so callers may invoke
+  it repeatedly (the unlock watch calls it on background transitions).
 - `getInitialMessageId(): Promise<string | null>` — the message id behind a
   cold-start notification press.
 - `onUnlockPress(cb): () => void` — subscribes to foreground/background
-  presses; returns an unsubscribe.
+  presses; returns an unsubscribe. Filters to `PRESS`/`ACTION_PRESS` only —
+  `DELIVERED` fires when a trigger merely executes and
+  `TRIGGER_NOTIFICATION_CREATED` when it is armed; both carry a notification
+  payload and must not navigate.
 - `openNotificationSettings(): Promise<void>` — OS notification settings
   deep link.
 
 ## Data flow
-- Create: `HomeScreen` focus runs `reconcile(state.data.messages)`; any future
-  locked message without a pending alarm gets scheduled. This single path
-  also heals restarts, reboots, and OEM-killed alarms — NotifyKit persists its
-  pending schedule in a Room DB and re-arms it on `BOOT_COMPLETED` (with a
-  `BOOT_COUNT` cold-start self-heal for OEMs that suppress the broadcast).
+- Schedule: `useUnlockWatch` (mounted on Home and Reveal) syncs on every
+  AppState change and message-list change. Foreground/'inactive': all
+  pending alarms are cancelled and JS timers are armed for each locked
+  message. Background only: timers are dropped and
+  `reconcile(state.data.messages)` runs, so any future locked message
+  without a pending alarm gets scheduled — a transient `inactive` (shade,
+  dialogs) can never swap the timers for a heads-up. This is
+  also the heal path for restarts, reboots, and OEM-killed alarms — NotifyKit
+  persists its pending schedule in a Room DB and re-arms it on
+  `BOOT_COMPLETED` (with a `BOOT_COUNT` cold-start self-heal for OEMs that
+  suppress the broadcast).
+- In-app unlock: when `unlockAt` passes with the app open, no notification is
+  shown — the watch's JS timer silently refetches and the status flips
+  locked → unlocked in place (list and reveal screen).
 - Delete: `RevealMessageScreen` calls `cancelUnlock(id)` after the repository
   delete.
 - Press: cold start reads `getInitialMessageId` in `App.tsx` and navigates
@@ -75,15 +93,26 @@ still derives status from `unlockAt` and the repository still nulls the body.
 - `__tests__/notifications.service.test.ts` uses the library's official
   `jest-mock` (wired in `jest.setup.js`) and covers: trigger args
   (id + timestamp + alarmManager), no-body-leak (fixed body, data carries
-  only `messageId`), reconcile schedules only missing future unlocks and
-  skips pending/past, cancel by id, permission status mapping, channel
-  creation on request, and initial-message-id extraction.
+  only `messageId`), refusal to arm while the app is foreground-active,
+  reconcile schedules only missing future unlocks and skips pending/past,
+  cancel by id, permission status mapping, channel creation on request, and
+  initial-message-id extraction.
 
 ## Known limitations
 - On Android 14+ without `SCHEDULE_EXACT_ALARM`, alarms may be inexact;
-  re-check `getTriggerNotificationIds`/reconcile on Home focus heals drops.
+  re-check `getTriggerNotificationIds`/reconcile on every background
+  transition heals drops.
+- A message created while the app stays open (never backgrounded) has no
+  native alarm until the first background transition — the in-app path is
+  covered by JS timers, but a process crash before any backgrounding loses
+  that notification (the status still unlocks correctly on next launch).
+- A background→foreground flip racing an in-flight reconcile can leave a
+  narrow window where an alarm is armed after `scheduleUnlock`'s active
+  check; the next foreground sync cancels it, so at worst one heads-up could
+  appear — accepted as a millisecond-scale race.
 - Press routing relies on `navigationRef.isReady()`; if a press arrives while
   the navigator has not mounted (extremely early cold start), it is ignored
   rather than queued. The reveal screen and Home both reload on every render,
   so the message is reachable from Home regardless.
-- `reconcile` fires one check on every Home focus; fine for personal scale.
+- `reconcile` runs from the unlock watch on background/list changes; fine for
+  personal scale.

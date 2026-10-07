@@ -1,6 +1,8 @@
+import {AppState} from 'react-native';
 import notifee, {
   AndroidImportance,
   AuthorizationStatus,
+  EventType,
   TriggerType,
   type InitialNotification,
   type Notification,
@@ -15,7 +17,7 @@ const MESSAGE_ID_KEY = 'messageId';
 // localized instead.
 const DEFAULT_CHANNEL_NAME = 'باز شدن پیام‌ها';
 const DEFAULT_TITLE = 'بعدابخون';
-const DEFAULT_BODY = 'پیام تو آماده‌ی خواندن شده است';
+const DEFAULT_BODY = 'پیام تو آماده‌ی خواندن است';
 
 // Persian fallbacks used when a caller has no language context (e.g. the
 // reconcile path). Screens pass explicit localized copy.
@@ -61,6 +63,13 @@ export async function scheduleUnlock(
   unlockAt: Date,
   copy?: NotificationCopy,
 ): Promise<void> {
+  // Never arm an alarm while the app is open: useUnlockWatch owns the
+  // in-app path (live locked → unlocked flip), so a heads-up here would
+  // only duplicate it. Checked at schedule time to close the race where a
+  // background reconcile is still in flight when the user returns.
+  if (AppState.currentState === 'active') {
+    return;
+  }
   const {title, body} = copy ?? emptyCopy;
   await ensureChannel();
   await notifee.createTriggerNotification(
@@ -81,6 +90,14 @@ export async function scheduleUnlock(
 
 export async function cancelUnlock(messageId: string): Promise<void> {
   await notifee.cancelTriggerNotification(messageId);
+}
+
+// Cancels every pending trigger. All app triggers are message unlocks, so
+// this sweeps strays too (deleted/stale ids, alarms armed before the
+// in-app-arming policy existed).
+export async function cancelAllUnlocks(): Promise<void> {
+  const ids = await notifee.getTriggerNotificationIds();
+  await Promise.all(ids.map(id => notifee.cancelTriggerNotification(id)));
 }
 
 // Re-schedules any future unlock that has no pending alarm. Idempotent, so it
@@ -113,16 +130,27 @@ export async function getInitialMessageId(): Promise<string | null> {
 // Subscribes to notification presses (app open in foreground or background).
 // Returns an unsubscribe function. In the killed state the press also launches
 // the main activity, so getInitialMessageId() above covers that path.
+// Only real taps navigate: DELIVERED fires when a trigger merely executes and
+// TRIGGER_NOTIFICATION_CREATED when it is armed — both carry a notification
+// payload, and treating those as presses caused spurious jumps to Reveal.
 export function onUnlockPress(cb: (messageId: string) => void): () => void {
-  const handle = (notification?: Notification) => {
-    const id = messageIdOf(notification);
+  const handle = (event: {type: EventType; detail?: {notification?: Notification}}) => {
+    if (event.type !== EventType.PRESS && event.type !== EventType.ACTION_PRESS) {
+      return;
+    }
+    const id = messageIdOf(event.detail?.notification);
     if (id) {cb(id);}
   };
-  notifee.onBackgroundEvent(async ({detail}) => {
-    if (detail?.notification) {handle(detail.notification);}
-  });
-  return notifee.onForegroundEvent(({detail}) => {
-    if (detail?.notification) {handle(detail.notification);}
+  notifee.onBackgroundEvent(async event => { handle(event); });
+  return notifee.onForegroundEvent(event => {
+    // Safety net: a reminder that fired while the app is open despite the
+    // unlock watch's cancel — dismiss it; the live status flip is the signal.
+    if (event.type === EventType.DELIVERED) {
+      const id = messageIdOf(event.detail?.notification);
+      if (id) {notifee.cancelDisplayedNotification(id).catch(() => {});}
+      return;
+    }
+    handle(event);
   });
 }
 
