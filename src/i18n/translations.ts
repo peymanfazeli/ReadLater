@@ -104,6 +104,16 @@ export const translations = {
     'drawer.settings': 'تنظیمات',
     'drawer.theme': 'ظاهر',
     'drawer.themeHint': 'برای تغییر ظاهر بزن',
+    'drawer.help': 'درباره برنامه',
+
+    // Benefits modal (opened from the drawer).
+    'help.title': 'چرا بعدابخون؟',
+    'help.benefit1': 'دیگه قرار نیست کارهای مهم روزت فراموش بشن.',
+    'help.benefit2': 'فقط کافیه برنامه رو باز کنی و روز و ساعت بدی یا گوشیت یادت بندازه.',
+    'help.benefit3': 'حتی میتونی برای آدمی که قراره تو آینده تبدیل بشی از الان یه پیام بذاری',
+    'help.benefit4': 'میتونی برای پیامات حتی قفل بذاری تا روز موعود باز نشن',
+    'help.benefit5': 'ببین حتی نیاز نیست که حساب کاربری داشته باشی، یه برنامه برای تو و رازهات.',
+    'help.close': 'بستن',
 
     // Login (accounts are out of scope for the MVP).
     'login.comingSoon': 'ارتباط با حساب کاربری به‌زودی اضافه می‌شود.',
@@ -212,6 +222,15 @@ export const english: Record<TranslationKey, string> = {
   'drawer.settings': 'Settings',
   'drawer.theme': 'Appearance',
   'drawer.themeHint': 'Tap to switch appearance',
+  'drawer.help': 'About the app',
+
+  'help.title': 'Why Badabekhoon?',
+  'help.benefit1': 'Your messages stay on your phone — they never leave the device.',
+  'help.benefit2': 'Write to your future self and open it on the date you choose.',
+  'help.benefit3': 'A reminder the moment a message unlocks, even in the background.',
+  'help.benefit4': 'Light and dark themes, with full Persian and English support.',
+  'help.benefit5': 'No account, no ads, no tracking.',
+  'help.close': 'Close',
 
   'login.comingSoon': 'Sign-in with an account will arrive soon.',
 

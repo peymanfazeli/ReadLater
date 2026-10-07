@@ -92,6 +92,7 @@ The theme system must be token-based and consistently applied across the entire 
 - peach: `#E8C2B5`
 - border: `#D8CDBF`
 - glow: `rgba(212, 163, 115, 0.45)` (title text halo)
+- ink: `#2A1B10` (old-ink text on the help-modal parchment; identical in both themes)
 
 ### Dark Theme Palette
 
@@ -109,6 +110,7 @@ Dreamy, reflective, safe, poetic — a quiet, velvety night-sky feel with a prec
 - peach: `#4A3A2A`
 - border: `#2C3140`
 - glow: `rgba(224, 169, 109, 0.6)` (title text halo)
+- ink: `#2A1B10` (old-ink text on the help-modal parchment; identical in both themes)
 
 The existing brand identity must remain recognizable in both themes.
 

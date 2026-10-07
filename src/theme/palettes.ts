@@ -19,7 +19,8 @@ export type ColorToken =
   | 'white'
   | 'black'
   | 'error'
-  | 'errorSurface';
+  | 'errorSurface'
+  | 'ink';
 
 // DESIGN.md palette (light).
 export const light: Record<ColorToken, string> = {
@@ -39,6 +40,10 @@ export const light: Record<ColorToken, string> = {
   black: '#000000',
   error: '#B83A3A',
   errorSurface: '#FADBD8',
+  // Old-ink color for text on parchment (help modal). Theme-independent: ink
+  // on paper looks the same in both themes — contrast on the dimmed
+  // parchment ≈4.5:1 (AA).
+  ink: '#2A1B10',
 };
 
 // Dark palette ("Deep Midnight Indigo" + champagne accent), hand-picked for
@@ -65,6 +70,7 @@ export const dark: Record<ColorToken, string> = {
   black: '#000000',
   error: '#F07070',
   errorSurface: '#3A2427',
+  ink: '#2A1B10',
 };
 
 export const palettes: Record<Scheme, Record<ColorToken, string>> = {

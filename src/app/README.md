@@ -9,6 +9,11 @@ Application-level composition: providers and navigation.
 - `NotificationAttentionProvider` — exposes whether the notification
   permission is missing (red-dot attention state) and a `refresh()`;
   re-checks on mount and when the app returns to foreground.
+- `DrawerContent` — drawer menu; also hosts the help/about modal: a
+  parchment photo card (`help-page.png` scaled 1.7× to crop the photo's
+  baked-in dark frame so all text sits on paper), `Gulzar` (Nastaliq,
+  handwritten-style) text in the theme-independent `ink` palette token, and
+  a round close button pinned absolutely to the card's bottom edge.
 - `RootNavigator` — native stack navigator wiring screens together.
 - Navigation types — typed routes shared by screens.
 
@@ -41,6 +46,9 @@ The snapshot test in `__tests__/App.test.tsx` renders the full tree with
 `react-test-renderer`. Native modules are mocked in `jest.setup.js`.
 
 ## Known limitations
+- `Gulzar.ttf` (help modal font) is bundled only in
+  `android/app/src/main/assets/fonts/`; the iOS project must add it when
+  iOS work starts.
 - `react-navigation` and `react-native-screens` pinned to versions
   compatible with RN 0.77 (`react-native-screens@4.9.x`); newer screens
   (≥4.10) fail RN 0.77 codegen and must be revisited when RN is upgraded.
