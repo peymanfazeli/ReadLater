@@ -56,7 +56,8 @@ function AppShell() {
   }
 
   return (
-    <View style={[styles.root, {direction}]}>
+    <View
+      style={[styles.root, {direction, backgroundColor: theme.colors.background}]}>
       <SafeAreaProvider>
         <NotificationAttentionProvider>
           <NavigationContainer ref={navigationRef}>
