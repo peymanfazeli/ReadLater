@@ -33,6 +33,8 @@
 - [ ] Application ID and package configuration are verified.
 - [ ] Version code and version name are verified.
 - [ ] App label and launcher icon are verified.
+- [ ] Launcher icon is inspected on a real launcher (see "Launcher Icon" below).
+- [ ] Store listing icon is exported at exactly 512x512 for Bazaar/Myket/Play upload.
 - [ ] Merged manifest permissions are reviewed.
 - [ ] Signed release artifact is installed on a clean device.
 - [ ] Release artifact launches and works without development tooling.
@@ -40,6 +42,44 @@
 - [ ] Release artifact integrity and signing certificate are verified.
 - [ ] Store-specific technical and policy requirements are verified.
 - [ ] Release notes and verification results are recorded.
+
+## Launcher Icon
+
+`main-icon.png` in the project root is the single source of truth for the launcher
+icon. The Android launcher resources are generated from it and must never be
+recoloured, cropped, padded, masked or flattened by hand.
+
+Generated resources, in `android/app/src/main/res/`:
+
+| Resource | Size |
+| --- | --- |
+| `mipmap-mdpi/ic_launcher.png` | 48x48 |
+| `mipmap-hdpi/ic_launcher.png` | 72x72 |
+| `mipmap-xhdpi/ic_launcher.png` | 96x96 |
+| `mipmap-xxhdpi/ic_launcher.png` | 144x144 |
+| `mipmap-xxxhdpi/ic_launcher.png` | 192x192 |
+
+The artwork has a transparent background, so the icon ships as plain raster
+mipmaps rather than an adaptive icon. An adaptive icon would require a background
+colour and would let the launcher apply its own shape mask, both of which alter
+the supplied artwork. `android:roundIcon` is therefore not set.
+
+Regenerate with a plain bilinear-quality downscale when the source artwork
+changes, then confirm each output keeps the source's transparent corners, total
+ink, silhouette size and mean colour.
+
+Accepted trade-offs of the raster approach:
+
+- The icon renders smaller in its launcher slot, because there is no adaptive
+  scale-up.
+- Android 13+ themed icons are unavailable, as those need an adaptive icon with
+  a monochrome layer.
+- Some launchers draw their own backing plate behind legacy raster icons. That
+  shape and colour come from the launcher, not from this project.
+
+Store listings need their own icon at exactly 512x512. Most-transparent artwork
+renders weakly there, so confirm the store listing icon against the store's
+rendering before submission.
 
 ## Bazaar and Myket
 

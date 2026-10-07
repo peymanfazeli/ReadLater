@@ -39,24 +39,25 @@ export const light: Record<ColorToken, string> = {
   errorSurface: '#FDECEA',
 };
 
-// Dark palette chosen for readability on dark surfaces (contrast notes in the
-// module README), not mechanically mirrored from the light palette.
+// Dark palette ("Deep Midnight Indigo" + champagne accent), hand-picked for
+// readability on dark surfaces, not mechanically mirrored from the light
+// palette.
 //
-// `primaryText` (#F0EEF7) and `secondaryText` (#A9A6B8) on `surface`
-// (#25283A) both exceed WCAG AA. `onPrimary` is the dark text used on the
-// (lighter) dark-theme primary fill.
+// `primaryText` (#EDEFEF) and `secondaryText` (#8C92A4) on `surface`
+// (#1E222D) both exceed WCAG AA (≈15:1 and ≈5.1:1). `onPrimary` is the dark
+// text used on the (light) champagne primary fill (≈7.6:1).
 export const dark: Record<ColorToken, string> = {
-  background: '#181A29',
-  surface: '#25283A',
-  primaryText: '#F0EEF7',
-  secondaryText: '#A9A6B8',
-  primary: '#C9B6FF',
-  primaryDark: '#B9A2FF',
-  onPrimary: '#1D1B30',
+  background: '#14171F',
+  surface: '#1E222D',
+  primaryText: '#EDEFEF',
+  secondaryText: '#8C92A4',
+  primary: '#E0A96D',
+  primaryDark: '#C4894E',
+  onPrimary: '#2A2117',
   successSurface: '#1E3628',
   successText: '#86D7A4',
-  peach: '#5A4238',
-  border: '#3A3E54',
+  peach: '#4A3A2A',
+  border: '#2C3140',
   white: '#FFFFFF',
   black: '#000000',
   error: '#F07070',

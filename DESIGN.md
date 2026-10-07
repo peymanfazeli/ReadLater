@@ -94,16 +94,19 @@ The theme system must be token-based and consistently applied across the entire 
 
 ### Dark Theme Palette
 
-- background: `#181A29`
-- surface: `#25283A`
-- primary text: use a light color with sufficient contrast
-- secondary text: use a muted light color with sufficient contrast
-- primary: use an accessible variation of the primary color when required
-- primary dark: adjust for dark-theme contrast
-- success surface: use a dark-compatible success surface
-- success text: use a readable success color
-- peach: use a dark-compatible accent variation
-- border: use a subtle dark-theme border
+Dreamy, reflective, safe, poetic — a quiet, velvety night-sky feel with a precious champagne accent.
+
+- background: `#14171F` (Deep Midnight Indigo)
+- surface: `#1E222D` (Elevated Soft Navy)
+- primary text: `#EDEFEF` (Muted Moonlight White)
+- secondary text: `#8C92A4` (Dusty Blue-Grey)
+- primary: `#E0A96D` (Soft Rose Gold / Champagne)
+- primary dark: `#C4894E` (pressed/deeper champagne)
+- on primary: `#2A2117` (dark text on the champagne fill)
+- success surface: `#1E3628`
+- success text: `#86D7A4`
+- peach: `#4A3A2A`
+- border: `#2C3140`
 
 The existing brand identity must remain recognizable in both themes.
 

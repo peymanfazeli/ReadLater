@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Launcher icon
+- `main-icon.png` (project root) is now the launcher icon. The five
+  `mipmap-*/ic_launcher.png` rasters were generated from it by downscale only —
+  no recolour, crop, pad, mask or flattening — at 48/72/96/144/192.
+- Removed the previous white-envelope-on-lavender adaptive icon:
+  `mipmap-anydpi-v26/ic_launcher.xml`, `mipmap-anydpi-v26/ic_launcher_round.xml`,
+  `drawable-nodpi/ic_launcher_foreground.png`, `values/colors.xml`
+  (`ic_launcher_background`) and all five `ic_launcher_round.png`.
+  Theme tokens live in `src/theme/palettes.ts`, so removing `colors.xml` has no
+  effect on in-app theming.
+- Dropped `android:roundIcon` from `AndroidManifest.xml` so one icon shape is
+  used everywhere.
+- The source artwork has a transparent background. Shipping it unmodified means
+  no background colour can be supplied, which rules out an adaptive icon (it
+  requires both a background colour and lets the launcher apply its own shape
+  mask). Consequences accepted: smaller launcher slot, no Android 13+ themed
+  icon, and launcher-drawn backing plates possible on some launchers.
+- Verified: source and all five outputs keep transparent corners, mean alpha
+  65.2/255, silhouette within ~2px of the source scale and mean colour
+  (177,124,99); packaged APK icons are byte-identical to the source resources.
+  `tsc` clean, `eslint` clean, 58/58 jest tests, `:app:assembleDebug` successful.
+- Documented regeneration and the 512x512 store-listing icon in
+  `BUILD_RELEASE.md`. Not generated here.
+
 ### Milestone 5/6 — bilingual i18n + light/dark themes
 - Full i18n catalog (`src/i18n`): `fa` is the typed source of truth,
   `english: Record<TranslationKey, string>` gives compile-time key safety,
