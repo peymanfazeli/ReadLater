@@ -61,8 +61,10 @@ export function sanitizeStoredRecord(
   body: string;
   createdAt: string;
   unlockAt: string;
+  openedAt: string | null;
 } | null {
-  const {id, title, body, createdAt, unlockAt} = raw as Record<string, unknown>;
+  const {id, title, body, createdAt, unlockAt, openedAt} =
+    raw as Record<string, unknown>;
   if (
     typeof id !== 'string' ||
     typeof title !== 'string' ||
@@ -90,12 +92,22 @@ export function sanitizeStoredRecord(
   ) {
     return null;
   }
+  // `openedAt` is cosmetic metadata: a bad value is nulled instead of
+  // dropping the whole record.
+  let normalizedOpenedAt: string | null = null;
+  if (
+    typeof openedAt === 'string' &&
+    Number.isFinite(new Date(openedAt).getTime())
+  ) {
+    normalizedOpenedAt = openedAt;
+  }
   return {
     id,
     title: trimmedTitle,
     body: trimmedBody,
     createdAt,
     unlockAt,
+    openedAt: normalizedOpenedAt,
   };
 }
 

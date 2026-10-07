@@ -8,6 +8,9 @@ export type StoredMessage = {
   body: string;
   createdAt: string;
   unlockAt: string;
+  // Set the first time the user views the message after it unlocked; absent
+  // (pre-existing records) or null means "not read yet".
+  openedAt?: string | null;
 };
 
 // Public view of a message. Locked messages never carry a body, but the title
@@ -19,6 +22,7 @@ export type Message = {
   createdAt: string;
   unlockAt: string;
   status: MessageStatus;
+  openedAt: string | null;
 };
 
 // Status is derived at read time and is never trusted from storage.
@@ -41,5 +45,6 @@ export function toView(
     createdAt: stored.createdAt,
     unlockAt: stored.unlockAt,
     status,
+    openedAt: typeof stored.openedAt === 'string' ? stored.openedAt : null,
   };
 }

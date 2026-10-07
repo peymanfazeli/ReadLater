@@ -184,3 +184,30 @@ describe('MessageRepository corrupt and invalid stores', () => {
     expect(result.messages).toEqual([]);
   });
 });
+
+describe('MessageRepository.markOpened', () => {
+  it('flags an unread message with the clock time and is idempotent', async () => {
+    const storage = new InMemoryStorage();
+    storage.value = JSON.stringify([stored({unlockAt: PAST})]);
+    const repo = makeRepo(storage);
+
+    expect((await repo.get('m1'))?.openedAt).toBeNull();
+    expect(await repo.markOpened('m1')).toBe(true);
+
+    const view = await repo.get('m1');
+    expect(view?.status).toBe('unlocked');
+    expect(view?.openedAt).toBe(NOW);
+
+    expect(await repo.markOpened('m1')).toBe(false);
+    expect((await repo.get('m1'))?.openedAt).toBe(NOW);
+  });
+
+  it('returns false for a missing id and does not rewrite storage', async () => {
+    const storage = new InMemoryStorage();
+    storage.value = JSON.stringify([stored({unlockAt: PAST})]);
+    const repo = makeRepo(storage);
+
+    expect(await repo.markOpened('nope')).toBe(false);
+    expect((await repo.get('m1'))?.openedAt).toBeNull();
+  });
+});

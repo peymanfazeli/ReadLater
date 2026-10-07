@@ -1,11 +1,21 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Typography} from '../../../components/Typography';
@@ -18,6 +28,8 @@ import {useMessage} from '../hooks/useMessages';
 import {cancelUnlock} from '../../../services/notifications/NotificationService';
 import type {RevealMessageScreenProps} from '../../../app/navigation/types';
 
+const lockedIcon = require('../../../assets/icon-locked-msg.png');
+
 export function RevealMessageScreen({
   route,
   navigation,
@@ -28,6 +40,45 @@ export function RevealMessageScreen({
   const {state, reload} = useMessage(messageId);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const shakeRotate = useSharedValue(0);
+  const shakePop = useSharedValue(1);
+  const reduceMotion = useReducedMotion();
+
+  // Playful "it's still locked" feedback: decaying side-to-side wobble that
+  // settles with a spring, plus a quick scale pop. Skipped under reduced
+  // motion; a re-tap restarts the sequence from the top.
+  function shakeLockedIcon() {
+    if (reduceMotion) {
+      return;
+    }
+    shakeRotate.value = withSequence(
+      withTiming(-16, {duration: 90, easing: Easing.inOut(Easing.quad)}),
+      withTiming(15, {duration: 110, easing: Easing.inOut(Easing.quad)}),
+      withTiming(-11, {duration: 110, easing: Easing.inOut(Easing.quad)}),
+      withTiming(10, {duration: 110, easing: Easing.inOut(Easing.quad)}),
+      withTiming(-6, {duration: 100, easing: Easing.inOut(Easing.quad)}),
+      withSpring(0, {damping: 9, stiffness: 200, mass: 0.6}),
+    );
+    shakePop.value = withSequence(
+      withSpring(1.16, {damping: 7, stiffness: 300, mass: 0.5}),
+      withSpring(1, {damping: 11, stiffness: 170, mass: 0.6}),
+    );
+  }
+
+  const lockedIconStyle = useAnimatedStyle(() => ({
+    transform: [{rotate: `${shakeRotate.value}deg`}, {scale: shakePop.value}],
+  }));
+
+  // Reading an unlocked message flags it as opened so the list can swap the
+  // sealed icon for the read one. Never runs for locked messages, so a locked
+  // body is never implied to be viewed.
+  useEffect(() => {
+    const message = state.status === 'ready' ? state.data : null;
+    if (message && message.status === 'unlocked' && !message.openedAt) {
+      messageRepository.markOpened(messageId).catch(() => {});
+    }
+  }, [state, messageId]);
 
   async function handleCopy() {
     if (state.status !== 'ready' || state.data === null || state.data.body === null) {
@@ -129,7 +180,18 @@ export function RevealMessageScreen({
               </Typography>
               {state.data.status === 'locked' ? (
                 <View style={styles.lockedContainer}>
-                  <Typography size="lg">🔒</Typography>
+                  <Pressable
+                    onPress={shakeLockedIcon}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('reveal.lockedLabel')}>
+                    <Animated.Image
+                      source={lockedIcon}
+                      style={[styles.lockedIcon, lockedIconStyle]}
+                      resizeMode="contain"
+                      importantForAccessibility="no-hide-descendants"
+                      accessibilityElementsHidden
+                    />
+                  </Pressable>
                   <Typography
                     size="md"
                     weight="medium"
@@ -234,6 +296,10 @@ const styles = StyleSheet.create({
   lockedContainer: {
     alignItems: 'center',
     paddingVertical: 16,
+  },
+  lockedIcon: {
+    width: 64,
+    height: 64,
   },
   lockedLabel: {
     marginTop: 8,

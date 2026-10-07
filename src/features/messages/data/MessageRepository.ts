@@ -98,6 +98,25 @@ export class MessageRepository {
     return true;
   }
 
+  // Flags a message as read. Callers must only invoke this for unlocked
+  // messages the user actually viewed; idempotent, and a missing id is a
+  // no-op (returns false).
+  async markOpened(id: string): Promise<boolean> {
+    const {records} = await this.readAll();
+    const target = records.find(r => r.id === id);
+    if (!target || target.openedAt) {
+      return false;
+    }
+    await this.writeAll(
+      records.map(r =>
+        r.id === id
+          ? {...r, openedAt: this.now().toISOString()}
+          : r,
+      ),
+    );
+    return true;
+  }
+
   private async readAll(): Promise<LoadResult> {
     const raw = await this.storage.read();
     if (raw === null || raw.trim().length === 0) {

@@ -26,7 +26,13 @@ unlock time, and reveal it after.
 - `useMessageList` / `useMessage` (`hooks/useMessages.ts`) — screen state
   (loading/ready/error) with reload.
 - `HomeScreen`, `CreateMessageScreen`, `RevealMessageScreen` — screens.
-- `MessageCard` — list item for a message.
+- `MessageCard` — list item with a three-state icon: locked →
+  `src/assets/icon-locked-msg.png`, unlocked-but-unread →
+  `icon-broken-sealed-msg.png`, read → `icon-opened-msg.png`. Unread-unlocked cards also
+  run two continuous reanimated loops (decaying icon jitter + a breathing
+  two-layer `primary` shine stroked exactly on the card's own border rect and
+  radius), both skipped under system reduce-motion and cancelled on
+  unmount/state change.
 - `JalaliDatePicker` (`components/JalaliDatePicker.tsx`) — RTL month grid with
   prev/next navigation; a day is disabled only once no future time remains on
   it, so today stays selectable; reports `onChange(jy, jm, jd)`.
@@ -53,6 +59,11 @@ unlock time, and reveal it after.
   the body of locked messages — nowhere else in the app receives the full
   record while it is locked. Privacy is enforced at the repository boundary,
   not in the UI.
+- `openedAt` tracks the first read: `RevealMessageScreen` calls
+  `markOpened(id)` only after an *unlocked* message has been shown (never for
+  locked ones), `sanitizeStoredRecord` tolerates a missing/invalid value from
+  pre-existing records (nulled, never dropped), and `MessageCard` uses it to
+  pick the sealed-vs-read icon. Idempotent at the repository.
 - The Home list reloads on every screen focus, so created/deleted messages
   reflect immediately.
 - Corrupt storage (unparsable JSON) and structurally-invalid/duplicate

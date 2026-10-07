@@ -61,7 +61,28 @@ describe('sanitizeStoredRecord', () => {
       body: 'self note',
       createdAt: '2026-05-01T00:00:00.000Z',
       unlockAt: '2026-07-01T00:00:00.000Z',
+      openedAt: null,
     });
+  });
+
+  it('keeps a valid openedAt and nulls a missing or invalid one', () => {
+    const base = {
+      id: 'm1',
+      title: 'x',
+      body: 'x',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      unlockAt: '2026-07-01T00:00:00.000Z',
+    };
+    expect(
+      sanitizeStoredRecord({...base, openedAt: '2026-06-02T00:00:00.000Z'}),
+    ).toMatchObject({openedAt: '2026-06-02T00:00:00.000Z'});
+    expect(sanitizeStoredRecord({...base, openedAt: 'not-a-date'})).toMatchObject(
+      {openedAt: null},
+    );
+    expect(sanitizeStoredRecord({...base, openedAt: 42})).toMatchObject({
+      openedAt: null,
+    });
+    expect(sanitizeStoredRecord(base)).toMatchObject({openedAt: null});
   });
 
   it('drops records with missing/wrong-typed fields', () => {
