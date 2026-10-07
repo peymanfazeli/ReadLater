@@ -240,16 +240,28 @@ export function RevealMessageScreen({
                   date: formatDate(state.data.createdAt, language),
                 })}
               </Typography>
-              {state.data.status === 'unlocked' && (
-                <Typography
-                  size="sm"
-                  color={theme.colors.successText}
-                  style={styles.unlockDate}>
-                  {t('reveal.unlockedOn', {
-                    date: formatDate(state.data.unlockAt, language),
-                  })}
-                </Typography>
-              )}
+              {state.data.status === 'unlocked' &&
+                (new Date(state.data.unlockAt).getTime() > Date.now() ? (
+                  // Readable before its date (saved without a lock): the
+                  // future unlockAt is a reminder, not an unlock moment.
+                  <Typography
+                    size="sm"
+                    color={theme.colors.secondaryText}
+                    style={styles.unlockDate}>
+                    {t('reveal.dueOn', {
+                      date: formatDate(state.data.unlockAt, language),
+                    })}
+                  </Typography>
+                ) : (
+                  <Typography
+                    size="sm"
+                    color={theme.colors.successText}
+                    style={styles.unlockDate}>
+                    {t('reveal.unlockedOn', {
+                      date: formatDate(state.data.unlockAt, language),
+                    })}
+                  </Typography>
+                ))}
             </View>
 
             <View style={styles.footer}>

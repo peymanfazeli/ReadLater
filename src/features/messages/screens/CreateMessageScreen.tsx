@@ -1,5 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {View, StyleSheet, ScrollView, Pressable} from 'react-native';
+import {View, StyleSheet, ScrollView, Pressable, Switch} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Typography} from '../../../components/Typography';
 import {Button} from '../../../components/Button';
@@ -62,6 +62,10 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
   } | null>(null);
   const [selectedHour, setSelectedHour] = useState<number>(9);
   const [selectedMinute, setSelectedMinute] = useState<number>(0);
+  // Locked by default (the historical behavior); switching it off lets the
+  // user read the message before its date — the date then only schedules the
+  // reminder notification.
+  const [locked, setLocked] = useState(true);
 
   const trimmedTitle = title.trim();
   const titleResult = validateTitle(title);
@@ -189,6 +193,7 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
         title: trimmedTitle,
         body: trimmed,
         unlockAt: unlockISO!,
+        locked,
       });
       if (result.ok) {
         navigation.goBack();
@@ -294,6 +299,33 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
             style={styles.sectionLabel}>
             {t('create.unlockSection')}
           </Typography>
+
+          <View style={styles.lockRow}>
+            <View style={styles.lockText}>
+              <Typography
+                size="sm"
+                weight="semibold"
+                color={theme.colors.primaryText}>
+                {t('create.lockLabel')}
+              </Typography>
+              <Typography
+                size="xs"
+                color={theme.colors.secondaryText}
+                style={styles.lockHint}>
+                {t('create.lockHint')}
+              </Typography>
+            </View>
+            <Switch
+              value={locked}
+              onValueChange={setLocked}
+              trackColor={{
+                false: theme.colors.secondaryText,
+                true: theme.colors.primary,
+              }}
+              thumbColor={theme.colors.surface}
+              accessibilityLabel={t('create.lockLabel')}
+            />
+          </View>
 
           <View style={styles.chipRow}>
             {QUICK_KEYS.map(o => (
@@ -446,6 +478,14 @@ const styles = StyleSheet.create({
   hint: {marginBottom: 16},
   card: {marginBottom: 12},
   sectionLabel: {marginBottom: 8},
+  lockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  lockText: {flex: 1},
+  lockHint: {marginTop: 2},
   bodyLabel: {marginTop: 16, marginBottom: 8},
   persistError: {marginTop: 8},
   chipRow: {flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 8},

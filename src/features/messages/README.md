@@ -1,8 +1,10 @@
 # Messages Feature
 
 ## Responsibility
-The core user flow: write a message for the future self, lock it until an
-unlock time, and reveal it after.
+The core user flow: write a message for the future self, optionally lock it
+until an unlock time, and reveal it after. Locking is a per-message choice
+(default on); an unlocked message is readable immediately and its date only
+schedules the reminder notification.
 
 ## Public interfaces
 - `StoredMessage` / `Message` / `MessageStatus` / `deriveStatus` / `toView`
@@ -60,14 +62,17 @@ unlock time, and reveal it after.
 - Screens render UI only and navigate by route name; they read state from the
   hooks and call `messageRepository`.
 - `CreateMessageScreen` validates the trimmed title and body against
-  `validateTitle`/`validateBody` (1–80 / 1–5000 chars) and an injected unlock
-  time, then calls `create`.
+  `validateTitle`/`validateBody` (1–80 / 1–5000 chars), collects the unlock
+  time and the lock toggle (native `Switch`, default locked), then calls
+  `create`.
 - `MessageRepository` validates, generates id/createdAt, and persists the
   whole collection as one JSON array under `@badabekhoon/messages/v1`.
-- Status is always derived at read time from `unlockAt`; `toView` nulls out
-  the body of locked messages — nowhere else in the app receives the full
-  record while it is locked. Privacy is enforced at the repository boundary,
-  not in the UI.
+- Status is always derived at read time from `unlockAt` and the stored
+  `locked` choice; `toView` nulls out the body of locked messages — nowhere
+  else in the app receives the full record while it is locked. Privacy is
+  enforced at the repository boundary, not in the UI. `sanitizeStoredRecord`
+  normalizes a missing/non-boolean `locked` flag to `true`, so legacy or
+  malformed records fail secure (stay locked).
 - `openedAt` tracks the first read: `RevealMessageScreen` calls
   `markOpened(id)` only after an *unlocked* message has been shown (never for
   locked ones), `sanitizeStoredRecord` tolerates a missing/invalid value from
@@ -120,12 +125,16 @@ unlock time, and reveal it after.
 - `__tests__/messages.domain.test.ts` — validation boundaries (empty/trim/
   max/over-long for both title and body), unlock-date validation
   (past/now/invalid/future), record sanitization (including records written
-  before the title field existed being dropped), status derivation at the
-  `now` boundary, id format and uniqueness, date formatting for fa and en.
+  before the title field existed being dropped and fail-secure lock-flag
+  normalization), status derivation at the `now` boundary (including
+  not-locked messages opening early and omitted flags staying locked), id
+  format and uniqueness, date formatting for fa and en.
 - `__tests__/messages.repository.test.ts` — create persistence, restart
   survival (new repository on the same storage), newest-first ordering,
   get/delete/missing-id, locked-body isolation (create locked, then advance
   the clock and confirm the body appears; pre-seeded unlocked record),
+  optional-lock behavior (body readable immediately when created with
+  `locked: false`; legacy records without the flag stay locked),
   corrupt JSON, and invalid/duplicate record filtering with counts.
 - `__tests__/messages.jalali.test.ts` — conversion boundaries (Nowruz, leap
   Esfand years 1394/1403), ISO round-trips over a long day span and minute

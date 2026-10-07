@@ -28,6 +28,7 @@ function stored(overrides: Partial<StoredMessage> = {}): StoredMessage {
     body: 'self note',
     createdAt: PAST,
     unlockAt: FUTURE,
+    locked: true,
     ...overrides,
   };
 }
@@ -83,6 +84,42 @@ describe('MessageRepository.create', () => {
     const got = await afterUnlock.get(created.message.id);
     expect(got?.status).toBe('unlocked');
     expect(got?.body).toBe('سیکریت');
+  });
+
+  it('exposes the body immediately when created without a lock', async () => {
+    const storage = new InMemoryStorage();
+    const repo = makeRepo(storage);
+    const created = await repo.create({
+      title: 't',
+      body: 'سیکریت',
+      unlockAt: FUTURE,
+      locked: false,
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      return;
+    }
+    expect(created.message.status).toBe('unlocked');
+    expect(created.message.body).toBe('سیکریت');
+    expect((await repo.list()).messages[0].body).toBe('سیکریت');
+    expect((await repo.get(created.message.id))?.body).toBe('سیکریت');
+  });
+
+  it('keeps a pre-seeded record without a lock flag locked (legacy data)', async () => {
+    const storage = new InMemoryStorage();
+    storage.value = JSON.stringify([
+      {
+        id: 'legacy',
+        title: 'old',
+        body: 'secret',
+        createdAt: PAST,
+        unlockAt: FUTURE,
+      },
+    ]);
+    const repo = makeRepo(storage);
+    const got = await repo.get('legacy');
+    expect(got?.status).toBe('locked');
+    expect(got?.body).toBeNull();
   });
 
   it('exposes the body of a pre-seeded already-unlocked record', async () => {

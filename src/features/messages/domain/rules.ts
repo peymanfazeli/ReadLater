@@ -61,9 +61,10 @@ export function sanitizeStoredRecord(
   body: string;
   createdAt: string;
   unlockAt: string;
+  locked: boolean;
   openedAt: string | null;
 } | null {
-  const {id, title, body, createdAt, unlockAt, openedAt} =
+  const {id, title, body, createdAt, unlockAt, locked, openedAt} =
     raw as Record<string, unknown>;
   if (
     typeof id !== 'string' ||
@@ -107,6 +108,9 @@ export function sanitizeStoredRecord(
     body: trimmedBody,
     createdAt,
     unlockAt,
+    // Fail-secure: legacy records (flag absent) and non-boolean garbage are
+    // treated as locked; only an explicit `false` leaves the body readable.
+    locked: locked === false ? false : true,
     openedAt: normalizedOpenedAt,
   };
 }

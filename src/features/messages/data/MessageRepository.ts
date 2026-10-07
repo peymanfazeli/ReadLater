@@ -12,6 +12,11 @@ export type CreateMessageInput = {
   title: string;
   body: string;
   unlockAt: string;
+  // Absent or false handling: only an explicit `false` opts out of locking;
+  // an omitted flag stores the message locked (fail-secure). Unlocked
+  // messages are readable right away; `unlockAt` then only schedules the
+  // reminder notification.
+  locked?: boolean;
 };
 
 export type CreateMessageError =
@@ -82,6 +87,7 @@ export class MessageRepository {
       body: body.value,
       createdAt: clock.toISOString(),
       unlockAt: input.unlockAt,
+      locked: input.locked !== false,
     };
     const {records} = await this.readAll();
     await this.writeAll([...records, record]);

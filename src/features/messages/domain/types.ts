@@ -8,6 +8,11 @@ export type StoredMessage = {
   body: string;
   createdAt: string;
   unlockAt: string;
+  // The user's lock choice at creation. Locked (default) hides the body until
+  // `unlockAt`; unlocked messages are readable immediately and `unlockAt`
+  // only drives the reminder. Sanitize normalizes a missing/invalid flag to
+  // `true`, so legacy records stay locked (fail-secure).
+  locked: boolean;
   // Set the first time the user views the message after it unlocked; absent
   // (pre-existing records) or null means "not read yet".
   openedAt?: string | null;
@@ -25,11 +30,17 @@ export type Message = {
   openedAt: string | null;
 };
 
-// Status is derived at read time and is never trusted from storage.
+// Status is derived at read time and is never trusted from storage. A message
+// the user did not lock is always 'unlocked'; `locked` defaults to true so an
+// omitted flag falls back to time-based locking.
 export function deriveStatus(
   unlockAt: string,
   now: Date = new Date(),
+  locked: boolean = true,
 ): MessageStatus {
+  if (!locked) {
+    return 'unlocked';
+  }
   return new Date(unlockAt).getTime() <= now.getTime() ? 'unlocked' : 'locked';
 }
 
@@ -37,7 +48,7 @@ export function toView(
   stored: StoredMessage,
   now: Date = new Date(),
 ): Message {
-  const status = deriveStatus(stored.unlockAt, now);
+  const status = deriveStatus(stored.unlockAt, now, stored.locked);
   return {
     id: stored.id,
     title: stored.title,

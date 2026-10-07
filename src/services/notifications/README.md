@@ -2,7 +2,8 @@
 
 ## Responsibility
 Covers the Milestone 4 requirement "add Android local notification adapter":
-schedule one reminder per locked message for its `unlockAt`, cancel on delete
+schedule one reminder per message for its `unlockAt` (locked or not — for a
+message saved without a lock the date is only a reminder), cancel on delete
 or read, reschedule what is missing, and route a notification press to the
 exact message — without ever exposing message content in the notification UI.
 

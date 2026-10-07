@@ -61,6 +61,7 @@ describe('sanitizeStoredRecord', () => {
       body: 'self note',
       createdAt: '2026-05-01T00:00:00.000Z',
       unlockAt: '2026-07-01T00:00:00.000Z',
+      locked: true,
       openedAt: null,
     });
   });
@@ -83,6 +84,26 @@ describe('sanitizeStoredRecord', () => {
       openedAt: null,
     });
     expect(sanitizeStoredRecord(base)).toMatchObject({openedAt: null});
+  });
+
+  it('normalizes the lock flag fail-secure: only explicit false stays open', () => {
+    const base = {
+      id: 'm1',
+      title: 'x',
+      body: 'x',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      unlockAt: '2026-07-01T00:00:00.000Z',
+    };
+    expect(sanitizeStoredRecord(base)).toMatchObject({locked: true});
+    expect(sanitizeStoredRecord({...base, locked: 'false'})).toMatchObject({
+      locked: true,
+    });
+    expect(sanitizeStoredRecord({...base, locked: 1})).toMatchObject({
+      locked: true,
+    });
+    expect(sanitizeStoredRecord({...base, locked: false})).toMatchObject({
+      locked: false,
+    });
   });
 
   it('drops records with missing/wrong-typed fields', () => {
@@ -163,6 +184,7 @@ describe('deriveStatus and toView', () => {
         body: 'secret',
         createdAt: NOW.toISOString(),
         unlockAt: '2026-07-01T12:00:00.000Z',
+        locked: true,
       },
       NOW,
     );
@@ -179,11 +201,36 @@ describe('deriveStatus and toView', () => {
         body: 'secret',
         createdAt: NOW.toISOString(),
         unlockAt: '2026-05-01T12:00:00.000Z',
+        locked: true,
       },
       NOW,
     );
     expect(view.status).toBe('unlocked');
     expect(view.body).toBe('secret');
+  });
+
+  it('exposes the body before unlockAt when the user chose not to lock', () => {
+    expect(deriveStatus('2026-07-01T12:00:00.000Z', NOW, false)).toBe(
+      'unlocked',
+    );
+    const view = toView(
+      {
+        id: 'm1',
+        title: 'open note',
+        body: 'readable now',
+        createdAt: NOW.toISOString(),
+        unlockAt: '2026-07-01T12:00:00.000Z',
+        locked: false,
+      },
+      NOW,
+    );
+    expect(view.status).toBe('unlocked');
+    expect(view.body).toBe('readable now');
+  });
+
+  it('treats an omitted lock flag as locked (fail-secure default)', () => {
+    expect(deriveStatus('2026-07-01T12:00:00.000Z', NOW)).toBe('locked');
+    expect(deriveStatus('2026-07-01T12:00:00.000Z', NOW, true)).toBe('locked');
   });
 });
 
