@@ -248,3 +248,50 @@ describe('MessageRepository.markOpened', () => {
     expect((await repo.get('m1'))?.openedAt).toBeNull();
   });
 });
+
+describe('MessageRepository todo messages', () => {
+  it('persists items, hides them while locked, and toggles after unlock', async () => {
+    const storage = new InMemoryStorage();
+    const repo = makeRepo(storage);
+    const created = await repo.create({
+      title: 'خرید',
+      body: '',
+      items: [{text: ' نان '}, {text: 'چای'}],
+      unlockAt: FUTURE,
+    });
+    if (!created.ok) {
+      throw new Error('create failed');
+    }
+    // Locked view: no body, no items.
+    expect(created.message.body).toBeNull();
+    expect(created.message.items).toBeNull();
+
+    // A locked todo cannot be toggled.
+    expect(await repo.setTodoItemDone(created.message.id, 0, true)).toBe(false);
+
+    const afterUnlock = new MessageRepository(
+      storage,
+      () => new Date('2026-10-01T00:00:00.000Z'),
+    );
+    expect((await afterUnlock.get(created.message.id))?.items).toEqual([
+      {text: 'نان', done: false},
+      {text: 'چای', done: false},
+    ]);
+
+    expect(await afterUnlock.setTodoItemDone(created.message.id, 0, true)).toBe(true);
+    expect((await afterUnlock.get(created.message.id))?.items).toEqual([
+      {text: 'نان', done: true},
+      {text: 'چای', done: false},
+    ]);
+
+    // Out-of-range index is refused.
+    expect(await afterUnlock.setTodoItemDone(created.message.id, 9, true)).toBe(false);
+  });
+
+  it('rejects a todo list with no usable items', async () => {
+    const repo = makeRepo();
+    await expect(
+      repo.create({title: 't', body: '', items: [{text: '  '}], unlockAt: FUTURE}),
+    ).resolves.toEqual({ok: false, error: 'todoEmpty'});
+  });
+});

@@ -7,14 +7,18 @@ until an unlock time, and reveal it after. Locking is a per-message choice
 schedules the reminder notification.
 
 ## Public interfaces
-- `StoredMessage` / `Message` / `MessageStatus` / `deriveStatus` / `toView`
-  (`domain/types.ts`) — persisted vs. public shapes and status derivation.
-- `validateTitle` / `validateBody` / `validateUnlockAt` /
-  `sanitizeStoredRecord` / `MAX_TITLE_LENGTH` (80) / `MAX_BODY_LENGTH` (5000)
-  / `formatDate` (`domain/rules.ts`) — validation rules, kept independent of
-  the UI so screens stay thin. Title and body validate independently with
-  distinct error codes (`titleEmpty`/`titleTooLong` vs `empty`/`tooLong`) so
-  the UI can localize each field's message separately.
+- `StoredMessage` / `Message` / `MessageStatus` / `TodoItem` / `deriveStatus`
+  / `toView` (`domain/types.ts`) — persisted vs. public shapes and status
+  derivation. Todo messages carry a non-empty `items` list instead of body
+  text; `toView` nulls both `body` and `items` while locked.
+- `validateTitle` / `validateBody` / `validateTodoItems` / `validateUnlockAt`
+  / `sanitizeStoredRecord` / `MAX_TITLE_LENGTH` (80) / `MAX_BODY_LENGTH`
+  (5000) / `MAX_TODO_ITEMS` (50) / `MAX_TODO_ITEM_LENGTH` (200) / `formatDate`
+  (`domain/rules.ts`) — validation rules, kept independent of the UI so
+  screens stay thin. Title and content validate independently with distinct
+  error codes (`titleEmpty`/`titleTooLong` vs `empty`/`tooLong` vs
+  `todoEmpty`/`todoInvalid`) so the UI can localize each field's message
+  separately.
 - `createId` (`domain/id.ts`) — RFC 4122 v4 UUID source.
 - `jalali.ts` (`domain/jalali.ts`) — Persian calendar math: Jalali↔Gregorian
   conversion, the 42-cell weekday grid, strict-future day/time checks in
@@ -22,8 +26,9 @@ schedules the reminder notification.
   digits/names for `fa`, Gregorian + English names for `en`), all pure
   functions over `jalaali-js`.
 - `MessageRepository` (`data/MessageRepository.ts`) — the only app-facing data
-  API: `list`, `get`, `create`, `delete`. Constructed with an injectable
-  storage adapter and clock for tests.
+  API: `list`, `get`, `create` (plain text or todo items), `delete`,
+  `markOpened`, `setTodoItemDone`. Constructed with an injectable storage
+  adapter and clock for tests.
 - `messageRepository` singleton (`data/index.ts`) — wired to AsyncStorage.
 - `useMessageList` / `useMessage` (`hooks/useMessages.ts`) — screen state
   (loading/ready/error) with `reload` (shows the loading state) and
@@ -61,18 +66,23 @@ schedules the reminder notification.
 ## Data flow
 - Screens render UI only and navigate by route name; they read state from the
   hooks and call `messageRepository`.
-- `CreateMessageScreen` validates the trimmed title and body against
-  `validateTitle`/`validateBody` (1–80 / 1–5000 chars), collects the unlock
-  time and the lock toggle (native `Switch`, default locked), then calls
-  `create`.
+- `CreateMessageScreen` validates the trimmed title and either the body or a
+  todo item list with `validateTitle`/`validateBody`/`validateTodoItems`
+  (1–80 title, 1–5000 body text, 1–50 items of ≤200 chars), collects the
+  unlock time and the lock toggle (native `Switch`, default locked), then
+  calls `create`. The todo toggle swaps the text box for an item editor; todo
+  messages keep an empty stored body.
 - `MessageRepository` validates, generates id/createdAt, and persists the
   whole collection as one JSON array under `@badabekhoon/messages/v1`.
 - Status is always derived at read time from `unlockAt` and the stored
-  `locked` choice; `toView` nulls out the body of locked messages — nowhere
-  else in the app receives the full record while it is locked. Privacy is
-  enforced at the repository boundary, not in the UI. `sanitizeStoredRecord`
-  normalizes a missing/non-boolean `locked` flag to `true`, so legacy or
-  malformed records fail secure (stay locked).
+  `locked` choice; `toView` nulls out the body and todo items of locked
+  messages — nowhere else in the app receives the full record while it is
+  locked. Privacy is enforced at the repository boundary, not in the UI.
+  `sanitizeStoredRecord` normalizes a missing/non-boolean `locked` flag to
+  `true`, so legacy or malformed records fail secure (stay locked).
+- Todo check-box state is persisted in place by `setTodoItemDone(id, index,
+  done)`, which refuses locked messages and bad indices; `RevealMessageScreen`
+  refreshes after each toggle and Copy is hidden for todo messages.
 - `openedAt` tracks the first read: `RevealMessageScreen` calls
   `markOpened(id)` only after an *unlocked* message has been shown (never for
   locked ones), `sanitizeStoredRecord` tolerates a missing/invalid value from
@@ -123,18 +133,20 @@ schedules the reminder notification.
 
 ## Test strategy
 - `__tests__/messages.domain.test.ts` — validation boundaries (empty/trim/
-  max/over-long for both title and body), unlock-date validation
+  max/over-long for title, body, and todo items), unlock-date validation
   (past/now/invalid/future), record sanitization (including records written
-  before the title field existed being dropped and fail-secure lock-flag
-  normalization), status derivation at the `now` boundary (including
-  not-locked messages opening early and omitted flags staying locked), id
-  format and uniqueness, date formatting for fa and en.
+  before the title field existed being dropped, fail-secure lock-flag
+  normalization, and todo item lists being accepted/validated), status
+  derivation at the `now` boundary (including not-locked messages opening
+  early, omitted flags staying locked, and todo items hidden while locked),
+  id format and uniqueness, date formatting for fa and en.
 - `__tests__/messages.repository.test.ts` — create persistence, restart
   survival (new repository on the same storage), newest-first ordering,
   get/delete/missing-id, locked-body isolation (create locked, then advance
   the clock and confirm the body appears; pre-seeded unlocked record),
   optional-lock behavior (body readable immediately when created with
-  `locked: false`; legacy records without the flag stay locked),
+  `locked: false`; legacy records without the flag stay locked), todo
+  creation with locked-item hiding and post-unlock `setTodoItemDone`,
   corrupt JSON, and invalid/duplicate record filtering with counts.
 - `__tests__/messages.jalali.test.ts` — conversion boundaries (Nowruz, leap
   Esfand years 1394/1403), ISO round-trips over a long day span and minute

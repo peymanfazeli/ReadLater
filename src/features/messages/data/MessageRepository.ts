@@ -3,14 +3,25 @@ import {
   sanitizeStoredRecord,
   validateBody,
   validateTitle,
+  validateTodoItems,
   validateUnlockAt,
 } from '../domain/rules';
-import {toView, type Message, type StoredMessage} from '../domain/types';
+import {
+  deriveStatus,
+  toView,
+  type Message,
+  type StoredMessage,
+  type TodoItem,
+} from '../domain/types';
 import type {MessageStorage} from '../../../services/storage/types';
 
 export type CreateMessageInput = {
   title: string;
   body: string;
+  // Todo drafts. When present the message is saved as a todo list and `body`
+  // is ignored (the create screen hides it); when absent a plain text body
+  // is required.
+  items?: readonly {text: string; done?: boolean}[];
   unlockAt: string;
   // Absent or false handling: only an explicit `false` opts out of locking;
   // an omitted flag stores the message locked (fail-secure). Unlocked
@@ -24,6 +35,8 @@ export type CreateMessageError =
   | 'titleTooLong'
   | 'empty'
   | 'tooLong'
+  | 'todoEmpty'
+  | 'todoInvalid'
   | 'invalidUnlockAt';
 
 export type CreateMessageResult =
@@ -73,9 +86,20 @@ export class MessageRepository {
     if (!title.ok) {
       return {ok: false, error: title.error};
     }
-    const body = validateBody(input.body);
-    if (!body.ok) {
-      return {ok: false, error: body.error};
+    let bodyValue = '';
+    let itemsValue: TodoItem[] | undefined;
+    if (input.items !== undefined) {
+      const items = validateTodoItems(input.items);
+      if (!items.ok) {
+        return {ok: false, error: items.error};
+      }
+      itemsValue = items.value;
+    } else {
+      const body = validateBody(input.body);
+      if (!body.ok) {
+        return {ok: false, error: body.error};
+      }
+      bodyValue = body.value;
     }
     const clock = this.now();
     if (!validateUnlockAt(input.unlockAt, clock)) {
@@ -84,7 +108,8 @@ export class MessageRepository {
     const record: StoredMessage = {
       id: createId(),
       title: title.value,
-      body: body.value,
+      body: bodyValue,
+      items: itemsValue,
       createdAt: clock.toISOString(),
       unlockAt: input.unlockAt,
       locked: input.locked !== false,
@@ -119,6 +144,35 @@ export class MessageRepository {
           ? {...r, openedAt: this.now().toISOString()}
           : r,
       ),
+    );
+    return true;
+  }
+
+  // Toggles one todo item. Refuses to touch locked messages, so the checkbox
+  // state of a message the user cannot read yet is never mutable. Returns
+  // false for a missing id, a locked message, or a bad index.
+  async setTodoItemDone(
+    id: string,
+    index: number,
+    done: boolean,
+  ): Promise<boolean> {
+    const {records} = await this.readAll();
+    const target = records.find(r => r.id === id);
+    if (
+      !target ||
+      target.items == null ||
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index >= target.items.length ||
+      deriveStatus(target.unlockAt, this.now(), target.locked) !== 'unlocked'
+    ) {
+      return false;
+    }
+    const items = target.items.map((item, i) =>
+      i === index ? {...item, done} : item,
+    );
+    await this.writeAll(
+      records.map(r => (r.id === id ? {...r, items} : r)),
     );
     return true;
   }

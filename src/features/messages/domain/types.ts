@@ -1,11 +1,22 @@
 export type MessageStatus = 'locked' | 'unlocked';
 
+// One checkbox entry of a todo-style message. Items carry message content and
+// follow the same privacy rules as the body: they must never cross into
+// list/reveal boundaries while the message is locked.
+export type TodoItem = {
+  text: string;
+  done: boolean;
+};
+
 // Full, privacy-sensitive record as persisted in storage. The body is always
 // present here; it must never cross into list/reveal boundaries while locked.
+// `items` is present only for todo messages (and then always non-empty); its
+// absence marks a plain text message, so legacy records need no migration.
 export type StoredMessage = {
   id: string;
   title: string;
   body: string;
+  items?: TodoItem[];
   createdAt: string;
   unlockAt: string;
   // The user's lock choice at creation. Locked (default) hides the body until
@@ -24,6 +35,9 @@ export type Message = {
   id: string;
   title: string;
   body: string | null;
+  // Todo entries, or null for plain text messages. Null while locked, so
+  // item text never crosses the reveal boundary before `unlockAt`.
+  items: TodoItem[] | null;
   createdAt: string;
   unlockAt: string;
   status: MessageStatus;
@@ -53,6 +67,10 @@ export function toView(
     id: stored.id,
     title: stored.title,
     body: status === 'unlocked' ? stored.body : null,
+    items:
+      status === 'unlocked' && stored.items != null && stored.items.length > 0
+        ? stored.items
+        : null,
     createdAt: stored.createdAt,
     unlockAt: stored.unlockAt,
     status,

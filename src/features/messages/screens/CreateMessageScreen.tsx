@@ -11,7 +11,11 @@ import {
   validateTitle,
   MAX_BODY_LENGTH,
   MAX_TITLE_LENGTH,
+  MAX_TODO_ITEM_LENGTH,
+  MAX_TODO_ITEMS,
+  type BodyValidationError,
 } from '../domain/rules';
+import type {TodoItem} from '../domain/types';
 import {messageRepository} from '../data';
 import {
   toPersianDigits,
@@ -44,6 +48,8 @@ type SaveError =
   | 'tooLong'
   | 'titleEmpty'
   | 'titleTooLong'
+  | 'todoEmpty'
+  | 'todoInvalid'
   | 'invalidUnlockAt';
 
 export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
@@ -51,6 +57,10 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
   const {t, language} = useTranslation();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  // Todo mode replaces the text body with a checkable item list.
+  const [isTodo, setIsTodo] = useState(false);
+  const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
+  const [draftItem, setDraftItem] = useState('');
   const [domainError, setDomainError] = useState<SaveError | null>(null);
   const [saving, setSaving] = useState(false);
   const [persistError, setPersistError] = useState<string | null>(null);
@@ -73,7 +83,12 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
 
   const trimmed = body.trim();
   const bodyResult = validateBody(body);
-  const bodyValid = bodyResult.ok;
+
+  // The text body and the todo list are two shapes of the same "message
+  // content" slot: exactly one of them must hold something.
+  const bodyError: BodyValidationError | null = bodyResult.ok ? null : bodyResult.error;
+  const contentValid = isTodo ? todoItems.length > 0 : bodyResult.ok;
+  const contentError: SaveError = isTodo ? 'todoEmpty' : bodyError ?? 'empty';
 
   // Fresh `now` on every render keeps passed minutes rolling off the UI.
   const now = new Date();
@@ -161,6 +176,30 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
     setSelectedDate(jalaliOf(iso));
   };
 
+  const addTodoItem = () => {
+    const text = draftItem.trim();
+    if (text.length === 0 || todoItems.length >= MAX_TODO_ITEMS) {
+      return;
+    }
+    setTodoItems(prev => [...prev, {text, done: false}]);
+    setDraftItem('');
+    if (domainError === 'todoEmpty' || domainError === 'todoInvalid') {
+      setDomainError(null);
+    }
+  };
+
+  const toggleTodoItem = (index: number) =>
+    setTodoItems(prev =>
+      prev.map((item, i) => (i === index ? {...item, done: !item.done} : item)),
+    );
+
+  const removeTodoItem = (index: number) => {
+    setTodoItems(prev => prev.filter((_, i) => i !== index));
+    if (todoItems.length === 1 && domainError == null) {
+      setDomainError('todoEmpty');
+    }
+  };
+
   const domainErrorMessage =
     domainError === 'titleEmpty'
       ? t('validation.titleRequired')
@@ -168,19 +207,23 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
         ? t('validation.titleTooLong')
         : domainError === 'empty'
           ? t('validation.bodyRequired')
-          : domainError === 'tooLong'
-            ? t('validation.bodyTooLong')
-            : domainError === 'invalidUnlockAt'
-              ? t('validation.invalidUnlockAt')
-              : null;
+        : domainError === 'tooLong'
+          ? t('validation.bodyTooLong')
+          : domainError === 'todoEmpty'
+            ? t('validation.todoRequired')
+            : domainError === 'todoInvalid'
+              ? t('validation.todoInvalid')
+              : domainError === 'invalidUnlockAt'
+                ? t('validation.invalidUnlockAt')
+                : null;
 
   async function handleSave() {
-    if (!titleValid || !bodyValid || !unlockInFuture) {
+    if (!titleValid || !contentValid || !unlockInFuture) {
       setDomainError(
         !titleValid
           ? titleResult.error
-          : !bodyValid
-            ? bodyResult.error
+          : !contentValid
+            ? contentError
             : 'invalidUnlockAt',
       );
       return;
@@ -191,7 +234,8 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
     try {
       const result = await messageRepository.create({
         title: trimmedTitle,
-        body: trimmed,
+        body: isTodo ? '' : trimmed,
+        items: isTodo ? todoItems : undefined,
         unlockAt: unlockISO!,
         locked,
       });
@@ -256,31 +300,150 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
             }
           />
 
-          <Typography
-            size="sm"
-            weight="semibold"
-            color={theme.colors.primaryText}
-            style={styles.bodyLabel}>
-            {t('create.bodyLabel')}
-          </Typography>
-          <TextField
-            value={body}
-            onChangeText={text => {
-              setBody(text);
-              if (domainError === 'empty' || domainError === 'tooLong') {
-                setDomainError(null);
-              }
-            }}
-            placeholder={t('create.bodyPlaceholder')}
-            multiline
-            maxLength={MAX_BODY_LENGTH}
-            accessibilityLabel={t('create.bodyLabel')}
-            error={
-              domainError === 'empty' || domainError === 'tooLong'
-                ? domainErrorMessage ?? undefined
-                : undefined
-            }
-          />
+          <View style={styles.lockRow}>
+            <View style={styles.lockText}>
+              <Typography
+                size="sm"
+                weight="semibold"
+                color={theme.colors.primaryText}>
+                {t('create.todoLabel')}
+              </Typography>
+              <Typography
+                size="xs"
+                color={theme.colors.secondaryText}
+                style={styles.lockHint}>
+                {t('create.todoHint')}
+              </Typography>
+            </View>
+            <Switch
+              value={isTodo}
+              onValueChange={value => {
+                setIsTodo(value);
+                if (
+                  domainError === 'empty' ||
+                  domainError === 'tooLong' ||
+                  domainError === 'todoEmpty' ||
+                  domainError === 'todoInvalid'
+                ) {
+                  setDomainError(null);
+                }
+              }}
+              trackColor={{
+                false: theme.colors.secondaryText,
+                true: theme.colors.primary,
+              }}
+              thumbColor={theme.colors.surface}
+              accessibilityLabel={t('create.todoLabel')}
+            />
+          </View>
+
+          {!isTodo ? (
+            <>
+              <Typography
+                size="sm"
+                weight="semibold"
+                color={theme.colors.primaryText}
+                style={styles.bodyLabel}>
+                {t('create.bodyLabel')}
+              </Typography>
+              <TextField
+                value={body}
+                onChangeText={text => {
+                  setBody(text);
+                  if (domainError === 'empty' || domainError === 'tooLong') {
+                    setDomainError(null);
+                  }
+                }}
+                placeholder={t('create.bodyPlaceholder')}
+                multiline
+                maxLength={MAX_BODY_LENGTH}
+                accessibilityLabel={t('create.bodyLabel')}
+                error={
+                  domainError === 'empty' || domainError === 'tooLong'
+                    ? domainErrorMessage ?? undefined
+                    : undefined
+                }
+              />
+            </>
+          ) : (
+            <View style={styles.todoBlock}>
+              <View style={styles.todoInputRow}>
+                <TextField
+                  style={styles.todoField}
+                  value={draftItem}
+                  onChangeText={setDraftItem}
+                  placeholder={t('create.todoPlaceholder')}
+                  maxLength={MAX_TODO_ITEM_LENGTH}
+                  accessibilityLabel={t('create.todoPlaceholder')}
+                />
+                <Pressable
+                  onPress={addTodoItem}
+                  disabled={
+                    draftItem.trim().length === 0 ||
+                    todoItems.length >= MAX_TODO_ITEMS
+                  }
+                  style={[
+                    styles.todoAdd,
+                    {borderColor: theme.colors.border, backgroundColor: theme.colors.surface},
+                    (draftItem.trim().length === 0 ||
+                      todoItems.length >= MAX_TODO_ITEMS) &&
+                      styles.chipDisabled,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('create.todoAdd')}>
+                  <Typography size="xs" color={theme.colors.primaryText}>
+                    {t('create.todoAdd')}
+                  </Typography>
+                </Pressable>
+              </View>
+              {(domainError === 'todoEmpty' || domainError === 'todoInvalid') &&
+                domainErrorMessage != null && (
+                  <Typography size="xs" color={theme.colors.error} style={styles.todoError}>
+                    {domainErrorMessage}
+                  </Typography>
+                )}
+              {todoItems.map((item, index) => (
+                <View key={`${index}-${item.text}`} style={styles.todoRow}>
+                  <Pressable
+                    onPress={() => toggleTodoItem(index)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{checked: item.done}}
+                    accessibilityLabel={item.text}
+                    style={[
+                      styles.todoCheckbox,
+                      {
+                        borderColor: theme.colors.border,
+                        backgroundColor: item.done
+                          ? theme.colors.primary
+                          : theme.colors.surface,
+                      },
+                    ]}>
+                    {item.done && (
+                      <Typography size="xs" color={theme.colors.onPrimary}>
+                        {'\u2713'}
+                      </Typography>
+                    )}
+                  </Pressable>
+                  <Typography
+                    size="sm"
+                    color={theme.colors.primaryText}
+                    style={styles.todoText}>
+                    {item.text}
+                  </Typography>
+                  <Pressable
+                    onPress={() => removeTodoItem(index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('create.todoRemove')}
+                    hitSlop={8}
+                    style={styles.todoRemove}>
+                    <Typography size="sm" color={theme.colors.secondaryText}>
+                      {'\u00D7'}
+                    </Typography>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
           {persistError != null && (
             <Typography
               size="xs"
@@ -456,7 +619,7 @@ export function CreateMessageScreen({navigation}: CreateMessageScreenProps) {
           <Button
             label={t('create.save')}
             onPress={handleSave}
-            disabled={!titleValid || !bodyValid || !unlockInFuture || saving}
+            disabled={!titleValid || !contentValid || !unlockInFuture || saving}
           />
           <Button
             label={t('actions.cancel')}
@@ -487,6 +650,22 @@ const styles = StyleSheet.create({
   lockText: {flex: 1},
   lockHint: {marginTop: 2},
   bodyLabel: {marginTop: 16, marginBottom: 8},
+  todoBlock: {marginTop: 4},
+  todoInputRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  todoField: {flex: 1},
+  todoAdd: {borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12},
+  todoError: {marginTop: 6},
+  todoRow: {flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10},
+  todoCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todoText: {flex: 1, lineHeight: 20},
+  todoRemove: {paddingHorizontal: 4},
   persistError: {marginTop: 8},
   chipRow: {flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 8},
   chip: {borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8},

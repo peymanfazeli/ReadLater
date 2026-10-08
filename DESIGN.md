@@ -346,9 +346,12 @@ The Home screen must:
 Required elements:
 
 - Required message title field.
-- Required message body field.
+- Required message content: either a text body field or a todo item list
+  (mutually exclusive, chosen with a per-message toggle). Todo items are
+  checkable entries; an empty item list is invalid.
 - Title validation.
 - Body validation with a 1–5000 character limit.
+- Todo item validation (1–50 items, each ≤ 200 characters).
 - Date/time selection as a separate step.
 - Optional friendly labels that can be removed.
 - Clear confirmation before saving.
@@ -378,10 +381,10 @@ Design requirements:
 Required elements:
 
 - Message title.
-- Unlocked message body.
+- Unlocked message body, or the checkable todo item list for todo messages.
 - Created date.
 - Unlock date.
-- Copy action.
+- Copy action (text messages only).
 - Create-new action.
 - Deleted/error state.
 - Notification deep-link entry.

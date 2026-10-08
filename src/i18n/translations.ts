@@ -16,7 +16,7 @@ export const translations = {
 
     // Home.
     'home.menuLabel': 'باز کردن منو',
-    'home.subtitle': 'پیامی برای خودت بنویس، آینده بازش کن',
+    'home.subtitle': 'پیامت رو برای خودت بنویس، سرموقع بازش کن',
     'home.corruptNotice': 'برخی پیام‌ها قابل خواندن نبودند و حذف شدند',
     'home.emptyTitle': 'هنوز پیامی نداری',
     'home.emptyHint': 'اولین پیامت رو برای خودت بنویس',
@@ -44,6 +44,11 @@ export const translations = {
     'create.pastWarning': 'زمان باز شدن باید در آینده باشد',
     'create.save': 'ذخیره پیام',
     'create.saveFailed': 'ذخیره پیام با خطا مواجه شد',
+    'create.todoLabel': 'لیست کارها',
+    'create.todoHint': 'به‌جای متن، فهرست کارها با تیک بساز',
+    'create.todoPlaceholder': 'مثلاً: خرید نان',
+    'create.todoAdd': 'افزودن',
+    'create.todoRemove': 'حذف این مورد',
 
     // Unlock quick picks and hours.
     'quick.tomorrow': 'فردا',
@@ -66,6 +71,8 @@ export const translations = {
     'validation.titleTooLong': 'عنوان خیلی طولانی است',
     'validation.bodyRequired': 'لطفاً پیامی بنویسید',
     'validation.bodyTooLong': 'پیام خیلی طولانی است',
+    'validation.todoRequired': 'حداقل یک مورد اضافه کن',
+    'validation.todoInvalid': 'موردی خیلی طولانی است',
     'validation.invalidUnlockAt': 'تاریخ باز شدن نامعتبر است',
 
     // Reveal.
@@ -170,6 +177,11 @@ export const english: Record<TranslationKey, string> = {
   'create.pastWarning': 'The unlock time must be in the future',
   'create.save': 'Save message',
   'create.saveFailed': 'Could not save your message',
+  'create.todoLabel': 'Todo list',
+  'create.todoHint': 'Swap the text box for a checkable list',
+  'create.todoPlaceholder': 'e.g. Buy bread',
+  'create.todoAdd': 'Add',
+  'create.todoRemove': 'Remove item',
 
   'quick.tomorrow': 'Tomorrow',
   'quick.week': '1 week',
@@ -190,6 +202,8 @@ export const english: Record<TranslationKey, string> = {
   'validation.titleTooLong': 'Title is too long',
   'validation.bodyRequired': 'Please write a message',
   'validation.bodyTooLong': 'Message is too long',
+  'validation.todoRequired': 'Add at least one item',
+  'validation.todoInvalid': 'An item is too long',
   'validation.invalidUnlockAt': 'The unlock time is not valid',
 
   'reveal.lockedLabel': 'This message is still locked',

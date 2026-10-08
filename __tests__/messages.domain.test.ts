@@ -2,10 +2,13 @@ import {deriveStatus, toView} from '../src/features/messages/domain/types';
 import {
   MAX_BODY_LENGTH,
   MAX_TITLE_LENGTH,
+  MAX_TODO_ITEM_LENGTH,
+  MAX_TODO_ITEMS,
   formatDate,
   sanitizeStoredRecord,
   validateBody,
   validateTitle,
+  validateTodoItems,
   validateUnlockAt,
 } from '../src/features/messages/domain/rules';
 import {createId} from '../src/features/messages/domain/id';
@@ -30,6 +33,41 @@ describe('validateBody', () => {
     const overLimit = 'a'.repeat(MAX_BODY_LENGTH + 1);
     expect(validateBody(atLimit).ok).toBe(true);
     expect(validateBody(overLimit)).toEqual({ok: false, error: 'tooLong'});
+  });
+});
+
+describe('validateTodoItems', () => {
+  it('trims texts, drops blank drafts, and keeps the done flag', () => {
+    expect(
+      validateTodoItems([
+        {text: '  خرید نان  '},
+        {text: '   '},
+        {text: 'چای بردار', done: true},
+      ]),
+    ).toEqual({
+      ok: true,
+      value: [
+        {text: 'خرید نان', done: false},
+        {text: 'چای بردار', done: true},
+      ],
+    });
+  });
+
+  it('rejects when nothing remains after trimming', () => {
+    expect(validateTodoItems([])).toEqual({ok: false, error: 'todoEmpty'});
+    expect(validateTodoItems([{text: '  '}])).toEqual({
+      ok: false,
+      error: 'todoEmpty',
+    });
+  });
+
+  it('rejects over-long items and over-cap lists', () => {
+    expect(
+      validateTodoItems([{text: 'a'.repeat(MAX_TODO_ITEM_LENGTH + 1)}]),
+    ).toEqual({ok: false, error: 'todoInvalid'});
+    expect(
+      validateTodoItems(Array.from({length: MAX_TODO_ITEMS + 1}, (_, i) => ({text: `item ${i}`}))),
+    ).toEqual({ok: false, error: 'todoInvalid'});
   });
 });
 
@@ -130,6 +168,48 @@ describe('sanitizeStoredRecord', () => {
     ).toBeNull();
   });
 
+  it('accepts a todo record with an empty body and valid items', () => {
+    expect(
+      sanitizeStoredRecord({
+        id: 'm1',
+        title: 'خرید',
+        body: '',
+        items: [
+          {text: '  نان  ', done: false},
+          {text: 'چای', done: true},
+        ],
+        createdAt: '2026-05-01T00:00:00.000Z',
+        unlockAt: '2026-07-01T00:00:00.000Z',
+      }),
+    ).toEqual({
+      id: 'm1',
+      title: 'خرید',
+      body: '',
+      items: [
+        {text: 'نان', done: false},
+        {text: 'چای', done: true},
+      ],
+      createdAt: '2026-05-01T00:00:00.000Z',
+      unlockAt: '2026-07-01T00:00:00.000Z',
+      locked: true,
+      openedAt: null,
+    });
+  });
+
+  it('drops malformed or empty todo item lists', () => {
+    const base = {
+      id: 'm1',
+      title: 'خرید',
+      body: '',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      unlockAt: '2026-07-01T00:00:00.000Z',
+    };
+    expect(sanitizeStoredRecord({...base, items: []})).toBeNull();
+    expect(sanitizeStoredRecord({...base, items: [{text: '  '}]})).toBeNull();
+    expect(sanitizeStoredRecord({...base, items: [{text: 42}]})).toBeNull();
+    expect(sanitizeStoredRecord({...base, items: 'nope'})).toBeNull();
+  });
+
   it('drops empty titles and bodies and impossible timestamps', () => {
     expect(
       sanitizeStoredRecord({
@@ -191,6 +271,40 @@ describe('deriveStatus and toView', () => {
     expect(view.status).toBe('locked');
     expect(view.body).toBeNull();
     expect(view.title).toBe('secret title');
+  });
+
+  it('never exposes todo items of a locked message', () => {
+    const view = toView(
+      {
+        id: 'm1',
+        title: 'secret title',
+        body: '',
+        items: [{text: 'secret item', done: false}],
+        createdAt: NOW.toISOString(),
+        unlockAt: '2026-07-01T12:00:00.000Z',
+        locked: true,
+      },
+      NOW,
+    );
+    expect(view.status).toBe('locked');
+    expect(view.items).toBeNull();
+  });
+
+  it('exposes todo items only when unlocked', () => {
+    const view = toView(
+      {
+        id: 'm1',
+        title: 'خرید',
+        body: '',
+        items: [{text: 'نان', done: false}],
+        createdAt: NOW.toISOString(),
+        unlockAt: '2026-05-01T12:00:00.000Z',
+        locked: true,
+      },
+      NOW,
+    );
+    expect(view.status).toBe('unlocked');
+    expect(view.items).toEqual([{text: 'نان', done: false}]);
   });
 
   it('exposes the body only when unlocked', () => {

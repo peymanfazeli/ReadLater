@@ -96,6 +96,16 @@ export function RevealMessageScreen({
     setCopied(true);
   }
 
+  // Toggling a todo item persists the check and refreshes the view. Only
+  // reachable for unlocked messages (items are null while locked).
+  async function toggleTodoItem(index: number, done: boolean) {
+    if (state.status !== 'ready' || state.data === null) {
+      return;
+    }
+    await messageRepository.setTodoItemDone(messageId, index, !done);
+    refresh();
+  }
+
   function confirmDelete() {
     Alert.alert(t('reveal.deleteConfirmTitle'), t('reveal.deleteConfirmBody'), [
       {text: t('actions.cancel'), style: 'cancel'},
@@ -213,6 +223,45 @@ export function RevealMessageScreen({
                     })}
                   </Typography>
                 </View>
+              ) : state.data.items != null ? (
+                <View style={styles.todoList}>
+                  {state.data.items.map((item, index) => (
+                    <Pressable
+                      key={`${index}-${item.text}`}
+                      onPress={() => toggleTodoItem(index, item.done)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{checked: item.done}}
+                      accessibilityLabel={item.text}
+                      style={styles.todoRow}>
+                      <View
+                        style={[
+                          styles.todoCheckbox,
+                          {
+                            borderColor: theme.colors.border,
+                            backgroundColor: item.done
+                              ? theme.colors.primary
+                              : theme.colors.surface,
+                          },
+                        ]}>
+                        {item.done && (
+                          <Typography size="xs" color={theme.colors.onPrimary}>
+                            {'\u2713'}
+                          </Typography>
+                        )}
+                      </View>
+                      <Typography
+                        size="md"
+                        color={
+                          item.done
+                            ? theme.colors.secondaryText
+                            : theme.colors.primaryText
+                        }
+                        style={styles.todoText}>
+                        {item.text}
+                      </Typography>
+                    </Pressable>
+                  ))}
+                </View>
               ) : (
                 <Typography size="md" color={theme.colors.primaryText} style={styles.body}>
                   {state.data.body}
@@ -220,12 +269,14 @@ export function RevealMessageScreen({
               )}
             </Card>
 
-            {state.data.status === 'unlocked' && copied && (
-              <Typography size="sm" color={theme.colors.successText} style={styles.copied}>
-                {t('reveal.copied')}
-              </Typography>
-            )}
-            {state.data.status === 'unlocked' && (
+            {state.data.status === 'unlocked' &&
+              state.data.items == null &&
+              copied && (
+                <Typography size="sm" color={theme.colors.successText} style={styles.copied}>
+                  {t('reveal.copied')}
+                </Typography>
+              )}
+            {state.data.status === 'unlocked' && state.data.items == null && (
               <Button
                 label={t('reveal.copy')}
                 variant="secondary"
@@ -312,6 +363,27 @@ const styles = StyleSheet.create({
   body: {
     marginTop: 12,
     lineHeight: 26,
+  },
+  todoList: {
+    marginTop: 12,
+  },
+  todoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  todoCheckbox: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todoText: {
+    flex: 1,
+    lineHeight: 24,
   },
   lockedContainer: {
     alignItems: 'center',
